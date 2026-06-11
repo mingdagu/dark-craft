@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗黑方块世界 DarkCraft</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #07080d; height: 100%;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+  .barWrap { position: fixed; left: 50%; transform: translateX(-50%); width: 420px; max-width: 70vw;
+    height: 16px; background: rgba(0,0,0,.65); border: 1px solid #3a2f25; border-radius: 3px; overflow: hidden; }
+  #hpWrap { bottom: 64px; }
+  #mpWrap { bottom: 42px; }
+  #xpWrap { bottom: 28px; height: 7px; }
+  .fill { height: 100%; width: 100%; transition: width .12s linear; }
+  #hpFill { background: linear-gradient(#a3232a, #6e1016); }
+  #mpFill { background: linear-gradient(#2a4fa3, #16306e); }
+  #xpFill { background: linear-gradient(#c9a227, #8a6d12); }
+  .barLabel { position: absolute; width: 100%; text-align: center; top: 0; line-height: 16px;
+    font-size: 11px; color: #e8dcc8; text-shadow: 0 1px 2px #000; }
+  #lvlBadge { position: fixed; bottom: 30px; left: calc(50% - 270px); width: 46px; height: 46px;
+    border-radius: 50%; background: radial-gradient(#2a2018, #0d0a07); border: 2px solid #6e5a3a;
+    color: #e8c96a; text-align: center; font-size: 20px; line-height: 44px; font-weight: bold;
+    text-shadow: 0 0 6px #c9a227; }
+  #potBadge { position: fixed; bottom: 30px; left: calc(50% + 224px); width: 46px; height: 46px;
+    border-radius: 8px; background: radial-gradient(#3a1014, #150507); border: 2px solid #6e3a3a;
+    color: #ff9a9a; text-align: center; font-size: 16px; line-height: 20px; padding-top: 4px; box-sizing: border-box; }
+  #potBadge small { display: block; font-size: 9px; color: #b08888; }
+  #equipPanel { position: fixed; right: 12px; bottom: 12px; width: 200px; background: rgba(8,6,4,.78);
+    border: 1px solid #3a2f25; border-radius: 4px; padding: 8px 10px; color: #cfc4b0; font-size: 12px; }
+  #equipPanel .slot { margin: 4px 0; line-height: 1.5; }
+  #equipPanel .slotName { color: #8d8170; font-size: 11px; }
+  #statPanel { position: fixed; right: 12px; top: 12px; background: rgba(8,6,4,.7);
+    border: 1px solid #3a2f25; border-radius: 4px; padding: 6px 12px; color: #cfc4b0; font-size: 13px; text-align: right; }
+  #titleBox { position: fixed; left: 12px; top: 10px; color: #b8a888; z-index: 10; }
+  #titleBox h1 { margin: 0; font-size: 18px; letter-spacing: 4px; color: #d8c9a3;
+    text-shadow: 0 0 12px rgba(200,150,60,.45); }
+  #help { font-size: 11px; color: #7a7060; margin-top: 4px; line-height: 1.7; }
+  #hitFlash { position: fixed; inset: 0; background: radial-gradient(transparent 40%, rgba(160,10,15,.55));
+    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; }
+  .dmgText { position: fixed; font-weight: bold; pointer-events: none; z-index: 15;
+    text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,.8); transform: translate(-50%, -50%); white-space: nowrap; }
+  #deathOverlay { position: fixed; inset: 0; background: rgba(5,2,2,.85); display: none;
+    z-index: 30; text-align: center; color: #cfc4b0; }
+  #deathOverlay h2 { margin-top: 18vh; font-size: 64px; color: #8d1118; letter-spacing: 16px;
+    text-shadow: 0 0 30px rgba(160,20,25,.6); }
+  #deathOverlay p { font-size: 16px; line-height: 2; }
+  #restartBtn { margin-top: 24px; padding: 12px 46px; font-size: 18px; background: #2a1d12;
+    color: #e8c96a; border: 1px solid #6e5a3a; border-radius: 4px; cursor: pointer; letter-spacing: 6px; }
+  #restartBtn:hover { background: #3a2a1a; }
+  #noWebGL { position: fixed; inset: 0; display: none; color: #cfc4b0; text-align: center; padding-top: 30vh; }
+</style>
+</head>
+<body>
+<div id="titleBox">
+  <h1>暗黑方块世界</h1>
+  <div id="help">WASD 移动 · 鼠标指向瞄准<br>左键 近战挥砍 · 右键/空格 火球术（耗蓝）<br>Q 喝生命药水 · 走近掉落物自动拾取</div>
+</div>
+<div id="statPanel">击杀 <span id="killText">0</span></div>
+<div id="hud">
+  <div id="hpWrap" class="barWrap"><div id="hpFill" class="fill"></div><div id="hpLabel" class="barLabel"></div></div>
+  <div id="mpWrap" class="barWrap"><div id="mpFill" class="fill"></div><div id="mpLabel" class="barLabel"></div></div>
+  <div id="xpWrap" class="barWrap"><div id="xpFill" class="fill"></div></div>
+  <div id="lvlBadge">1</div>
+  <div id="potBadge"><span id="potText">1</span><small>药水 [Q]</small></div>
+  <div id="equipPanel">
+    <div class="slot"><span class="slotName">武器：</span><span id="wepText" style="color:#888">赤手空拳</span></div>
+    <div class="slot"><span class="slotName">护甲：</span><span id="armText" style="color:#888">破布衣衫</span></div>
+  </div>
+</div>
+<div id="hitFlash"></div>
+<div id="deathOverlay">
+  <h2>你死了</h2>
+  <p>存活时间：<span id="dTime"></span><br>击杀怪物：<span id="dKills"></span><br>最终等级：<span id="dLevel"></span></p>
+  <button id="restartBtn" onclick="location.reload()">重新开始</button>
+</div>
+<div id="noWebGL"><h2>渲染库加载失败</h2><p>本页面需要联网加载 Three.js 渲染库，请检查网络后刷新。</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+if (typeof THREE === 'undefined') { document.getElementById('noWebGL').style.display = 'block'; return; }
+
+// ---------- 基础常量 ----------
+const SIZE = 128;            // 世界边长（格）
+const PLAYER_SPEED = 6.2;
+const MELEE_RANGE = 2.7, MELEE_CD = 0.45;
+const FIRE_COST = 12, FIRE_CD = 0.55, FIRE_SPEED = 15, FIRE_RADIUS = 2.8;
+const PICKUP_RANGE = 1.5, DROP_TTL = 30;
+
+const RARITIES = [
+  { name: '普通', color: '#c8c8c8', hex: 0xc8c8c8, mult: 1.0,  w: 60 },
+  { name: '魔法', color: '#5b8cff', hex: 0x5b8cff, mult: 1.35, w: 25 },
+  { name: '稀有', color: '#ffd24a', hex: 0xffd24a, mult: 1.8,  w: 11 },
+  { name: '传奇', color: '#ff8c2e', hex: 0xff8c2e, mult: 2.5,  w: 4  },
+];
+const WEP_NAMES = ['断剑', '骨斧', '钉锤', '弯刀', '巨剑'];
+const ARM_NAMES = ['皮甲', '锁甲', '鳞甲', '板甲', '符文甲'];
+
+// ---------- 噪声（带种子的程序化地形） ----------
+const SEED = 1337;
+function hash2(x, z) {
+  let n = (x * 374761393 + z * 668265263 + SEED * 144665) | 0;
+  n = ((n ^ (n >>> 13)) * 1274126177) | 0;
+  return (((n ^ (n >>> 16)) >>> 0) / 4294967295);
+}
+function smoothNoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+  const a = hash2(xi, zi), b = hash2(xi + 1, zi), c = hash2(xi, zi + 1), d = hash2(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, z) {
+  return smoothNoise(x, z) * 0.55 + smoothNoise(x * 2.1, z * 2.1) * 0.3 + smoothNoise(x * 4.3, z * 4.3) * 0.15;
+}
+
+// ---------- 场景 ----------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07080d);
+scene.fog = new THREE.FogExp2(0x07080d, 0.026);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+const CAM_OFF = new THREE.Vector3(11, 15.5, 11);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// 灯光：永夜 + 月光 + 玩家火把
+scene.add(new THREE.HemisphereLight(0x26304a, 0x0a0810, 0.55));
+const moon = new THREE.DirectionalLight(0x55668a, 0.28);
+moon.position.set(-30, 50, -20); scene.add(moon);
+const torch = new THREE.PointLight(0xff9944, 1.35, 22, 2);
+scene.add(torch);
+
+// ---------- 地形 ----------
+const heights = new Int8Array(SIZE * SIZE);
+const corrupt = new Uint8Array(SIZE * SIZE);
+for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) {
+  let h = Math.floor(fbm(x * 0.045, z * 0.045) * 9) - 1;
+  if (h < 0) h = 0; if (h > 7) h = 7;
+  heights[z * SIZE + x] = h;
+  corrupt[z * SIZE + x] = smoothNoise(x * 0.09 + 99, z * 0.09 + 99) > 0.68 ? 1 : 0;
+}
+function groundH(fx, fz) {
+  const x = Math.max(0, Math.min(SIZE - 1, Math.round(fx)));
+  const z = Math.max(0, Math.min(SIZE - 1, Math.round(fz)));
+  return heights[z * SIZE + x] + 0.5; // 方块顶面
+}
+(function buildTerrain() {
+  let count = 0;
+  for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) count += heights[z * SIZE + x] + 2;
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const mat = new THREE.MeshLambertMaterial();
+  const mesh = new THREE.InstancedMesh(geo, mat, count);
+  const m = new THREE.Matrix4(); const col = new THREE.Color();
+  let i = 0;
+  for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) {
+    const h = heights[z * SIZE + x], isC = corrupt[z * SIZE + x];
+    for (let y = -1; y <= h; y++) {
+      m.makeTranslation(x, y, z); mesh.setMatrixAt(i, m);
+      const shade = 0.82 + hash2(x * 3 + y, z * 3 - y) * 0.36;
+      if (y < h) col.setRGB(0.13 * shade, 0.11 * shade, 0.10 * shade);          // 泥土岩层
+      else if (isC) col.setRGB(0.20 * shade, 0.08 * shade, 0.26 * shade);        // 腐化紫地表
+      else if (h >= 5) col.setRGB(0.22 * shade, 0.22 * shade, 0.25 * shade);     // 高地岩石
+      else col.setRGB(0.07 * shade, 0.16 * shade, 0.09 * shade);                 // 暗夜草地
+      mesh.setColorAt(i, col); i++;
+    }
+  }
+  mesh.count = i;
+  scene.add(mesh);
+})();
+
+// 枯树与遗迹（氛围结构）
+(function buildProps() {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const wood = new THREE.MeshLambertMaterial({ color: 0x2a1d12 });
+  const stone = new THREE.MeshLambertMaterial({ color: 0x3a3a42 });
+  const boxes = [];
+  function put(mat, x, y, z, sx, sy, sz) {
+    const mm = new THREE.Mesh(geo, mat);
+    mm.position.set(x, y, z); mm.scale.set(sx || 1, sy || 1, sz || 1);
+    scene.add(mm); boxes.push(mm);
+  }
+  for (let n = 0; n < 42; n++) {
+    const x = 6 + Math.floor(hash2(n, 7) * (SIZE - 12)), z = 6 + Math.floor(hash2(n, 31) * (SIZE - 12));
+    const base = groundH(x, z), th = 3 + Math.floor(hash2(n, 13) * 3);
+    put(wood, x, base + th / 2, z, 0.5, th, 0.5);
+    put(wood, x + 0.7, base + th - 0.6, z, 1.2, 0.3, 0.3);
+    put(wood, x - 0.3, base + th - 1.3, z - 0.6, 0.3, 0.3, 1.1);
+  }
+  for (let n = 0; n < 7; n++) {
+    const cx = 14 + Math.floor(hash2(n + 80, 5) * (SIZE - 28)), cz = 14 + Math.floor(hash2(n + 80, 55) * (SIZE - 28));
+    for (let k = 0; k < 5; k++) {
+      const a = k / 5 * Math.PI * 2, px = cx + Math.cos(a) * 3.2, pz = cz + Math.sin(a) * 3.2;
+      const ph = 1.5 + hash2(n * 9 + k, 3) * 2.5, base = groundH(px, pz);
+      put(stone, px, base + ph / 2, pz, 0.8, ph, 0.8);
+    }
+    if (n < 4) { // 少量遗迹火盆光源
+      const l = new THREE.PointLight(0x7a4aff, 0.8, 12, 2);
+      l.position.set(cx, groundH(cx, cz) + 2.2, cz); scene.add(l);
+    }
+  }
+})();
+
+// ---------- 体素小人构建 ----------
+function buildHumanoid(skin, cloth, scale) {
+  const g = new THREE.Group();
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  function part(color, x, y, z, sx, sy, sz) {
+    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: color }));
+    mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); g.add(mesh); return mesh;
+  }
+  const legL = part(cloth, -0.16, 0.35, 0, 0.26, 0.7, 0.26);
+  const legR = part(cloth, 0.16, 0.35, 0, 0.26, 0.7, 0.26);
+  const body = part(cloth, 0, 1.05, 0, 0.62, 0.72, 0.36);
+  const head = part(skin, 0, 1.75, 0, 0.5, 0.5, 0.5);
+  const armL = part(skin, -0.44, 1.18, 0, 0.2, 0.62, 0.2);
+  const armR = part(skin, 0.44, 1.18, 0, 0.2, 0.62, 0.2);
+  armL.geometry = armR.geometry = legL.geometry = geo;
+  g.scale.setScalar(scale || 1);
+  return { group: g, legL, legR, armL, armR, body, head };
+}
+
+// ---------- 玩家 ----------
+const player = {
+  pos: new THREE.Vector3(SIZE / 2, 0, SIZE / 2),
+  facing: 0, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
+  level: 1, xp: 0, xpNeed: 60, baseAtk: 10,
+  weapon: null, armor: null, potions: 1, kills: 0,
+  meleeT: 0, fireT: 0, attackAnim: 0, dead: false,
+};
+const pModel = buildHumanoid(0xd8b890, 0x1c2030, 1);
+pModel.head.material.color.setHex(0xc9a87a);
+// 红披风 + 手中武器
+const cape = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.85, 0.08), new THREE.MeshLambertMaterial({ color: 0x551015 }));
+cape.position.set(0, 1.05, 0.25); pModel.group.add(cape);
+const wepMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), new THREE.MeshLambertMaterial({ color: 0x999999, emissive: 0x222222 }));
+wepMesh.position.set(0, -0.5, -0.3); wepMesh.rotation.x = Math.PI / 2.4;
+pModel.armR.add(wepMesh);
+scene.add(pModel.group);
+player.pos.y = groundH(player.pos.x, player.pos.z);
+
+// ---------- 输入 ----------
+const keys = {};
+const mouseNDC = new THREE.Vector2();
+let aimPoint = new THREE.Vector3(SIZE / 2, 0, SIZE / 2 - 5);
+addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); });
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('mousemove', e => {
+  mouseNDC.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+});
+let wantMelee = false, wantFire = false;
+addEventListener('mousedown', e => { if (e.button === 0) wantMelee = true; if (e.button === 2) wantFire = true; });
+addEventListener('contextmenu', e => e.preventDefault());
+
+const raycaster = new THREE.Raycaster();
+const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function updateAim() {
+  aimPlane.constant = -(player.pos.y + 0.5);
+  raycaster.setFromCamera(mouseNDC, camera);
+  const p = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(aimPlane, p)) aimPoint.copy(p);
+}
+
+// ---------- 怪物 ----------
+const monsters = [];
+const MTYPES = {
+  zombie:   { skin: 0x3f6b35, cloth: 0x23301f, hp: 32, dmg: 8, speed: 2.3, xp: 14, scale: 1.0 },
+  skeleton: { skin: 0xb8b4a4, cloth: 0x55524a, hp: 20, dmg: 6, speed: 3.4, xp: 11, scale: 0.92 },
+};
+function spawnMonster() {
+  const typeKey = Math.random() < 0.55 ? 'zombie' : 'skeleton';
+  const t = MTYPES[typeKey];
+  let x, z, tries = 0;
+  do {
+    const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 16;
+    x = player.pos.x + Math.cos(a) * d; z = player.pos.z + Math.sin(a) * d; tries++;
+  } while ((x < 3 || x > SIZE - 3 || z < 3 || z > SIZE - 3) && tries < 12);
+  x = Math.max(3, Math.min(SIZE - 3, x)); z = Math.max(3, Math.min(SIZE - 3, z));
+  const lv = player.level;
+  const hpMax = Math.round(t.hp * (1 + 0.32 * (lv - 1)));
+  const model = buildHumanoid(t.skin, t.cloth, t.scale);
+  model.group.position.set(x, groundH(x, z), z);
+  scene.add(model.group);
+  // 头顶血条（广告牌式双面片）
+  const barG = new THREE.Group();
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12),
+    new THREE.MeshBasicMaterial({ color: 0x220a0a, side: THREE.DoubleSide, depthTest: false, transparent: true }));
+  const fg = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12),
+    new THREE.MeshBasicMaterial({ color: 0xb82a2a, side: THREE.DoubleSide, depthTest: false, transparent: true }));
+  fg.position.z = 0.01; barG.add(bg); barG.add(fg);
+  barG.position.y = 2.35 * t.scale; model.group.add(barG);
+  monsters.push({
+    type: typeKey, model, barG, fg,
+    hp: hpMax, hpMax, dmg: Math.round(t.dmg * (1 + 0.22 * (lv - 1))),
+    speed: t.speed * (0.9 + Math.random() * 0.25), xp: Math.round(t.xp * (1 + 0.25 * (lv - 1))),
+    atkT: 0, flashT: 0, animT: Math.random() * 10,
+  });
+}
+function hurtMonster(mon, dmg, fromFire) {
+  mon.hp -= dmg; mon.flashT = 0.12;
+  mon.model.body.material.emissive.setHex(0x661111);
+  mon.model.head.material.emissive.setHex(0x661111);
+  showDmg(mon.model.group.position.clone().add(new THREE.Vector3(0, 2.1, 0)),
+    Math.round(dmg), fromFire ? '#ff9a3e' : '#ffd9b0', fromFire ? 18 : 15);
+  if (mon.hp <= 0) killMonster(mon);
+}
+function killMonster(mon) {
+  scene.remove(mon.model.group);
+  monsters.splice(monsters.indexOf(mon), 1);
+  player.kills++;
+  gainXp(mon.xp);
+  rollDrops(mon.model.group.position);
+}
+
+// ---------- 经验与升级 ----------
+function gainXp(n) {
+  player.xp += n;
+  while (player.xp >= player.xpNeed) {
+    player.xp -= player.xpNeed;
+    player.level++;
+    player.xpNeed = Math.round(player.xpNeed * 1.45);
+    player.maxHp += 18; player.baseAtk += 3;
+    player.hp = player.maxHp; player.mp = player.maxMp;
+    showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.6, 0)), '等级提升！LV ' + player.level, '#ffe27a', 22);
+  }
+}
+
+// ---------- 掉落物 ----------
+const drops = [];
+const dropGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
+const potGeo = new THREE.BoxGeometry(0.3, 0.42, 0.3);
+function rollRarity() {
+  let r = Math.random() * 100;
+  for (const ra of RARITIES) { if (r < ra.w) return ra; r -= ra.w; }
+  return RARITIES[0];
+}
+function rollDrops(pos) {
+  if (Math.random() < 0.22) makeDrop(pos, { kind: 'potion' });
+  if (Math.random() < 0.30) {
+    const rarity = rollRarity();
+    const isWep = Math.random() < 0.5;
+    const base = isWep ? 4 + player.level * 2.2 : 3 + player.level * 1.8;
+    const power = Math.max(1, Math.round(base * rarity.mult * (0.85 + Math.random() * 0.3)));
+    const names = isWep ? WEP_NAMES : ARM_NAMES;
+    makeDrop(pos, {
+      kind: isWep ? 'weapon' : 'armor', rarity,
+      power, name: rarity.name + '·' + names[Math.floor(Math.random() * names.length)],
+    });
+  }
+}
+function makeDrop(pos, item) {
+  let mesh;
+  if (item.kind === 'potion') {
+    mesh = new THREE.Mesh(potGeo, new THREE.MeshLambertMaterial({ color: 0xc01525, emissive: 0x550a10 }));
+  } else {
+    mesh = new THREE.Mesh(dropGeo, new THREE.MeshLambertMaterial({ color: item.rarity.hex, emissive: item.rarity.hex, emissiveIntensity: 0.35 }));
+  }
+  const x = pos.x + (Math.random() - 0.5), z = pos.z + (Math.random() - 0.5);
+  mesh.position.set(x, groundH(x, z) + 0.5, z);
+  scene.add(mesh);
+  drops.push({ mesh, item, ttl: DROP_TTL, baseY: mesh.position.y });
+}
+function tryPickup(d) {
+  const it = d.item;
+  if (it.kind === 'potion') {
+    player.potions++;
+    showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.2, 0)), '+1 生命药水', '#ff7a8a', 14);
+  } else {
+    const slot = it.kind === 'weapon' ? 'weapon' : 'armor';
+    const cur = player[slot];
+    if (!cur || it.power > cur.power) {
+      player[slot] = it;
+      showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.2, 0)),
+        '拾取 ' + it.name + '（' + (slot === 'weapon' ? '攻击+' : '防御+') + it.power + '）', it.rarity.color, 16);
+      if (slot === 'weapon') wepMesh.material.color.setHex(it.rarity.hex);
+    } else {
+      showDmg(d.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), '较弱 · 已丢弃', '#777777', 12);
+    }
+  }
+  scene.remove(d.mesh);
+  drops.splice(drops.indexOf(d), 1);
+}
+
+// ---------- 火球 ----------
+const fireballs = [];
+const fireGeo = new THREE.SphereGeometry(0.28, 10, 10);
+function castFireball() {
+  if (player.mp < FIRE_COST || player.fireT > 0) return;
+  player.mp -= FIRE_COST; player.fireT = FIRE_CD; player.attackAnim = 0.3;
+  const dir = new THREE.Vector3(Math.sin(player.facing), 0, Math.cos(player.facing));
+  const mesh = new THREE.Mesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xff7722 }));
+  mesh.position.copy(player.pos).add(new THREE.Vector3(dir.x * 0.9, 1.2, dir.z * 0.9));
+  const light = fireballs.length < 4 ? new THREE.PointLight(0xff6622, 1.1, 7, 2) : null;
+  if (light) mesh.add(light);
+  scene.add(mesh);
+  fireballs.push({ mesh, dir, life: 1.4 });
+}
+function explodeFireball(fb) {
+  const p = fb.mesh.position;
+  const dmgBase = (player.baseAtk + (player.weapon ? player.weapon.power : 0)) * 1.6;
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    const mon = monsters[i];
+    if (mon.model.group.position.distanceTo(p) < FIRE_RADIUS)
+      hurtMonster(mon, dmgBase * (0.9 + Math.random() * 0.2), true);
+  }
+  const boom = new THREE.Mesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.85 }));
+  boom.position.copy(p); scene.add(boom);
+  explosions.push({ mesh: boom, t: 0 });
+  scene.remove(fb.mesh);
+  fireballs.splice(fireballs.indexOf(fb), 1);
+}
+const explosions = [];
+
+// ---------- 近战 ----------
+function doMelee() {
+  if (player.meleeT > 0) return;
+  player.meleeT = MELEE_CD; player.attackAnim = 0.32;
+  const dmgBase = player.baseAtk + (player.weapon ? player.weapon.power : 0);
+  const fwd = new THREE.Vector2(Math.sin(player.facing), Math.cos(player.facing));
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    const mon = monsters[i];
+    const dp = new THREE.Vector2(mon.model.group.position.x - player.pos.x, mon.model.group.position.z - player.pos.z);
+    const dist = dp.length();
+    if (dist < MELEE_RANGE && dp.normalize().dot(fwd) > 0.34)
+      hurtMonster(mon, dmgBase * (0.85 + Math.random() * 0.3), false);
+  }
+}
+
+// ---------- 伤害飘字 ----------
+const dmgTexts = [];
+function showDmg(worldPos, text, color, size) {
+  if (dmgTexts.length > 40) { const old = dmgTexts.shift(); old.el.remove(); }
+  const el = document.createElement('div');
+  el.className = 'dmgText'; el.textContent = text;
+  el.style.color = color; el.style.fontSize = (size || 14) + 'px';
+  document.body.appendChild(el);
+  dmgTexts.push({ el, pos: worldPos.clone(), life: 0.9 });
+}
+function updateDmgTexts(dt) {
+  for (let i = dmgTexts.length - 1; i >= 0; i--) {
+    const d = dmgTexts[i];
+    d.life -= dt; d.pos.y += dt * 1.6;
+    if (d.life <= 0) { d.el.remove(); dmgTexts.splice(i, 1); continue; }
+    const v = d.pos.clone().project(camera);
+    d.el.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px';
+    d.el.style.top = ((-v.y * 0.5 + 0.5) * innerHeight) + 'px';
+    d.el.style.opacity = Math.min(1, d.life * 2);
+  }
+}
+
+// ---------- 玩家受击 / 药水 / 死亡 ----------
+const hitFlash = document.getElementById('hitFlash');
+let flashT = 0;
+function hurtPlayer(dmg) {
+  const armorP = player.armor ? player.armor.power : 0;
+  const real = Math.max(1, Math.round(dmg * 50 / (50 + armorP)));
+  player.hp -= real; flashT = 0.3;
+  showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.3, 0)), '-' + real, '#ff4444', 16);
+  if (player.hp <= 0 && !player.dead) die();
+}
+function usePotion() {
+  if (player.potions <= 0 || player.hp >= player.maxHp || player.dead) return;
+  player.potions--;
+  const heal = Math.round(player.maxHp * 0.4);
+  player.hp = Math.min(player.maxHp, player.hp + heal);
+  showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.3, 0)), '+' + heal, '#4aff7a', 18);
+}
+addEventListener('keydown', e => { if (e.code === 'KeyQ') usePotion(); });
+let startTime = performance.now();
+function die() {
+  player.dead = true; player.hp = 0;
+  const secs = Math.round((performance.now() - startTime) / 1000);
+  document.getElementById('dTime').textContent = Math.floor(secs / 60) + ' 分 ' + (secs % 60) + ' 秒';
+  document.getElementById('dKills').textContent = player.kills + ' 只';
+  document.getElementById('dLevel').textContent = 'LV ' + player.level;
+  document.getElementById('deathOverlay').style.display = 'block';
+}
+
+// ---------- HUD ----------
+const ui = {
+  hpFill: document.getElementById('hpFill'), mpFill: document.getElementById('mpFill'),
+  xpFill: document.getElementById('xpFill'), hpLabel: document.getElementById('hpLabel'),
+  mpLabel: document.getElementById('mpLabel'), lvl: document.getElementById('lvlBadge'),
+  pot: document.getElementById('potText'), kill: document.getElementById('killText'),
+  wep: document.getElementById('wepText'), arm: document.getElementById('armText'),
+};
+function updateHUD() {
+  ui.hpFill.style.width = (player.hp / player.maxHp * 100) + '%';
+  ui.mpFill.style.width = (player.mp / player.maxMp * 100) + '%';
+  ui.xpFill.style.width = (player.xp / player.xpNeed * 100) + '%';
+  ui.hpLabel.textContent = Math.ceil(player.hp) + ' / ' + player.maxHp;
+  ui.mpLabel.textContent = Math.floor(player.mp) + ' / ' + player.maxMp;
+  ui.lvl.textContent = player.level;
+  ui.pot.textContent = player.potions;
+  ui.kill.textContent = player.kills;
+  if (player.weapon) { ui.wep.textContent = player.weapon.name + ' 攻击+' + player.weapon.power; ui.wep.style.color = player.weapon.rarity.color; }
+  if (player.armor) { ui.arm.textContent = player.armor.name + ' 防御+' + player.armor.power; ui.arm.style.color = player.armor.rarity.color; }
+}
+
+// ---------- 主循环 ----------
+let spawnTimer = 0;
+for (let i = 0; i < 8; i++) spawnMonster();
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  if (!player.dead) {
+    // 移动
+    let mx = 0, mz = 0;
+    if (keys['KeyW']) { mx -= 1; mz -= 1; }
+    if (keys['KeyS']) { mx += 1; mz += 1; }
+    if (keys['KeyA']) { mx -= 1; mz += 1; }
+    if (keys['KeyD']) { mx += 1; mz -= 1; }
+    const moving = mx !== 0 || mz !== 0;
+    if (moving) {
+      const len = Math.hypot(mx, mz);
+      player.pos.x += mx / len * PLAYER_SPEED * dt;
+      player.pos.z += mz / len * PLAYER_SPEED * dt;
+      player.pos.x = Math.max(2, Math.min(SIZE - 2, player.pos.x));
+      player.pos.z = Math.max(2, Math.min(SIZE - 2, player.pos.z));
+    }
+    player.pos.y += (groundH(player.pos.x, player.pos.z) - player.pos.y) * Math.min(1, dt * 10);
+
+    // 瞄准
+    updateAim();
+    player.facing = Math.atan2(aimPoint.x - player.pos.x, aimPoint.z - player.pos.z);
+
+    // 攻击
+    player.meleeT = Math.max(0, player.meleeT - dt);
+    player.fireT = Math.max(0, player.fireT - dt);
+    if (wantMelee) { doMelee(); wantMelee = false; }
+    if (wantFire || keys['Space']) { castFireball(); wantFire = false; }
+
+    // 回复
+    player.mp = Math.min(player.maxMp, player.mp + 6 * dt);
+    player.hp = Math.min(player.maxHp, player.hp + 0.8 * dt);
+
+    // 玩家模型
+    pModel.group.position.copy(player.pos);
+    pModel.group.rotation.y = player.facing;
+    const wob = moving ? Math.sin(t * 11) * 0.55 : 0;
+    pModel.legL.rotation.x = wob; pModel.legR.rotation.x = -wob;
+    pModel.armL.rotation.x = -wob * 0.7;
+    player.attackAnim = Math.max(0, player.attackAnim - dt);
+    pModel.armR.rotation.x = player.attackAnim > 0 ? -2.0 * Math.sin(player.attackAnim / 0.32 * Math.PI) : wob * 0.7;
+
+    // 怪物刷新
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnTimer = 1.2;
+      const target = Math.min(7 + player.level, 22);
+      if (monsters.length < target) { spawnMonster(); if (monsters.length < target - 3) spawnMonster(); }
+    }
+  }
+
+  // 怪物 AI
+  for (const mon of monsters) {
+    const mp = mon.model.group.position;
+    const dx = player.pos.x - mp.x, dz = player.pos.z - mp.z;
+    const dist = Math.hypot(dx, dz);
+    mon.atkT = Math.max(0, mon.atkT - dt);
+    if (!player.dead) {
+      if (dist > 1.6) {
+        mp.x += dx / dist * mon.speed * dt;
+        mp.z += dz / dist * mon.speed * dt;
+      } else if (mon.atkT <= 0) {
+        mon.atkT = 1.0;
+        hurtPlayer(mon.dmg * (0.9 + Math.random() * 0.2));
+      }
+    }
+    // 怪物间简单分离
+    for (const other of monsters) {
+      if (other === mon) continue;
+      const ox = mp.x - other.model.group.position.x, oz = mp.z - other.model.group.position.z;
+      const od = Math.hypot(ox, oz);
+      if (od > 0.01 && od < 0.9) { mp.x += ox / od * dt * 1.5; mp.z += oz / od * dt * 1.5; }
+    }
+    mp.y += (groundH(mp.x, mp.z) - mp.y) * Math.min(1, dt * 10);
+    mon.model.group.rotation.y = Math.atan2(dx, dz);
+    mon.animT += dt;
+    const mwob = Math.sin(mon.animT * 8) * 0.5;
+    mon.model.legL.rotation.x = mwob; mon.model.legR.rotation.x = -mwob;
+    mon.model.armL.rotation.x = -0.9 + mwob * 0.3; mon.model.armR.rotation.x = -0.9 - mwob * 0.3;
+    // 血条
+    const ratio = Math.max(0, mon.hp / mon.hpMax);
+    mon.fg.scale.x = ratio; mon.fg.position.x = -(1 - ratio) * 0.55;
+    mon.barG.quaternion.copy(camera.quaternion);
+    // 受击红闪恢复
+    if (mon.flashT > 0) {
+      mon.flashT -= dt;
+      if (mon.flashT <= 0) { mon.model.body.material.emissive.setHex(0); mon.model.head.material.emissive.setHex(0); }
+    }
+  }
+
+  // 火球
+  for (let i = fireballs.length - 1; i >= 0; i--) {
+    const fb = fireballs[i];
+    fb.life -= dt;
+    fb.mesh.position.x += fb.dir.x * FIRE_SPEED * dt;
+    fb.mesh.position.z += fb.dir.z * FIRE_SPEED * dt;
+    let hit = fb.life <= 0 || fb.mesh.position.y < groundH(fb.mesh.position.x, fb.mesh.position.z) - 0.2;
+    if (!hit) for (const mon of monsters) {
+      if (mon.model.group.position.distanceTo(fb.mesh.position) < 1.25) { hit = true; break; }
+    }
+    if (hit) explodeFireball(fb);
+  }
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    ex.t += dt;
+    ex.mesh.scale.setScalar(1 + ex.t * 28);
+    ex.mesh.material.opacity = Math.max(0, 0.85 - ex.t * 3.4);
+    if (ex.t > 0.25) { scene.remove(ex.mesh); explosions.splice(i, 1); }
+  }
+
+  // 掉落物
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.ttl -= dt;
+    if (d.ttl <= 0) { scene.remove(d.mesh); drops.splice(i, 1); continue; }
+    d.mesh.rotation.y += dt * 2.5;
+    d.mesh.position.y = d.baseY + Math.sin(t * 3 + i) * 0.12;
+    if (!player.dead && d.mesh.position.distanceTo(player.pos) < PICKUP_RANGE) tryPickup(d);
+  }
+
+  // 火把光与受击红屏
+  torch.position.set(player.pos.x, player.pos.y + 2.4, player.pos.z);
+  torch.intensity = 1.3 + Math.sin(t * 9) * 0.09 + Math.random() * 0.07;
+  if (flashT > 0) { flashT -= dt; hitFlash.style.opacity = Math.min(1, flashT * 3); }
+
+  // 相机跟随
+  camera.position.lerp(player.pos.clone().add(CAM_OFF), Math.min(1, dt * 6));
+  camera.lookAt(player.pos.x, player.pos.y + 1, player.pos.z);
+
+  updateDmgTexts(dt);
+  updateHUD();
+  renderer.render(scene, camera);
+}
+animate();
+})();
+</script>
+</body>
+</html>
