@@ -3,958 +3,192 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>暗黑方块世界 DarkCraft</title>
+<title>暗黑方块世界 DarkCraft — 中世纪生存</title>
 <style>
   html, body { margin: 0; padding: 0; overflow: hidden; background: #07080d; height: 100%;
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif; user-select: none; -webkit-user-select: none; }
   canvas { display: block; }
+  button { font-family: inherit; }
+  /* ---------- 第②区：状态条 ---------- */
   #hud { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
   .barWrap { position: fixed; left: 50%; transform: translateX(-50%); width: 420px; max-width: 70vw;
     height: 16px; background: rgba(0,0,0,.65); border: 1px solid #3a2f25; border-radius: 3px; overflow: hidden; }
-  #hpWrap { bottom: 64px; }
-  #mpWrap { bottom: 42px; }
-  #xpWrap { bottom: 28px; height: 7px; }
+  #hungerWrap { bottom: 80px; height: 11px; }
+  #hpWrap { bottom: 58px; }
+  #mpWrap { bottom: 36px; }
+  #xpWrap { bottom: 24px; height: 7px; }
   .fill { height: 100%; width: 100%; transition: width .12s linear; }
+  #hungerFill { background: linear-gradient(#b07a28, #7a5210); }
   #hpFill { background: linear-gradient(#a3232a, #6e1016); }
   #mpFill { background: linear-gradient(#2a4fa3, #16306e); }
   #xpFill { background: linear-gradient(#c9a227, #8a6d12); }
   .barLabel { position: absolute; width: 100%; text-align: center; top: 0; line-height: 16px;
     font-size: 11px; color: #e8dcc8; text-shadow: 0 1px 2px #000; }
-  #lvlBadge { position: fixed; bottom: 30px; left: calc(50% - 270px); width: 46px; height: 46px;
+  #hungerWrap .barLabel { line-height: 11px; font-size: 9px; }
+  #lvlBadge { position: fixed; bottom: 28px; left: calc(50% - 270px); width: 46px; height: 46px;
     border-radius: 50%; background: radial-gradient(#2a2018, #0d0a07); border: 2px solid #6e5a3a;
     color: #e8c96a; text-align: center; font-size: 20px; line-height: 44px; font-weight: bold;
-    text-shadow: 0 0 6px #c9a227; }
-  #potBadge { position: fixed; bottom: 30px; left: calc(50% + 224px); width: 46px; height: 46px;
+    text-shadow: 0 0 6px #c9a227; z-index: 10; }
+  #potBadge { position: fixed; bottom: 28px; left: calc(50% + 224px); width: 46px; height: 46px;
     border-radius: 8px; background: radial-gradient(#3a1014, #150507); border: 2px solid #6e3a3a;
-    color: #ff9a9a; text-align: center; font-size: 16px; line-height: 20px; padding-top: 4px; box-sizing: border-box; }
+    color: #ff9a9a; text-align: center; font-size: 16px; line-height: 20px; padding-top: 4px; box-sizing: border-box; z-index: 10; }
   #potBadge small { display: block; font-size: 9px; color: #b08888; }
   #equipPanel { position: fixed; right: 12px; bottom: 12px; width: 200px; background: rgba(8,6,4,.78);
-    border: 1px solid #3a2f25; border-radius: 4px; padding: 8px 10px; color: #cfc4b0; font-size: 12px; }
-  #equipPanel .slot { margin: 4px 0; line-height: 1.5; }
+    border: 1px solid #3a2f25; border-radius: 4px; padding: 8px 10px; color: #cfc4b0; font-size: 12px; z-index: 10; }
   #equipPanel .slotName { color: #8d8170; font-size: 11px; }
+  #equipPanel .slot { margin: 4px 0; line-height: 1.5; }
   #statPanel { position: fixed; right: 12px; top: 12px; background: rgba(8,6,4,.7);
-    border: 1px solid #3a2f25; border-radius: 4px; padding: 6px 12px; color: #cfc4b0; font-size: 13px; text-align: right; }
+    border: 1px solid #3a2f25; border-radius: 4px; padding: 6px 12px; color: #cfc4b0; font-size: 13px; text-align: right; z-index: 10; }
+  /* ---------- 第①区：资源 ---------- */
+  #resPanel { position: fixed; left: 12px; bottom: 12px; width: 128px; background: rgba(8,6,4,.78);
+    border: 1px solid #3a2f25; border-radius: 4px; padding: 8px 10px; color: #cfc4b0; font-size: 12px; z-index: 10; }
+  .resRow { display: flex; gap: 6px; line-height: 1.7; align-items: center; }
+  .resRow b { margin-left: auto; color: #e8dcc8; }
+  .resIcon { color: #6e5a3a; font-size: 9px; }
+  /* ---------- 第③区：建筑列表 ---------- */
+  #buildBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 102px;
+    display: flex; gap: 5px; z-index: 11; }
+  .bpBtn { background: rgba(8,6,4,.82); border: 1px solid #3a2f25; border-radius: 4px; color: #cfc4b0;
+    font-size: 12px; padding: 4px 9px; cursor: pointer; text-align: center; line-height: 1.3; }
+  .bpBtn small { display: block; font-size: 9px; color: #8d8170; }
+  .bpBtn:hover { background: #2a2018; }
+  .bpBtn.selected { border-color: #c9a227; color: #ffe27a; box-shadow: 0 0 8px rgba(201,162,39,.4); }
+  .bpBtn.poor { opacity: 0.45; }
+  #hintBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 142px; color: #9a8f7a;
+    font-size: 12px; text-shadow: 0 1px 2px #000; z-index: 10; pointer-events: none; }
+  /* ---------- 贸易站 ---------- */
+  #tradePanel { position: fixed; right: 12px; top: 110px; width: 252px; background: rgba(8,6,4,.88);
+    border: 1px solid #6e5a3a; border-radius: 4px; padding: 10px 12px; color: #cfc4b0; font-size: 12px;
+    display: none; z-index: 12; }
+  .tradeHead { color: #e8c96a; font-size: 13px; margin-bottom: 4px; letter-spacing: 2px; }
+  .tRow { display: flex; align-items: center; gap: 5px; line-height: 2; }
+  .tRow span:first-child { width: 76px; }
+  .tPrice { color: #ffd24a; width: 44px; }
+  .tRow button { background: #2a2018; border: 1px solid #3a2f25; color: #cfc4b0; border-radius: 3px;
+    font-size: 11px; padding: 1px 7px; cursor: pointer; }
+  .tRow button:disabled { opacity: 0.35; cursor: default; }
+  .tRow button:hover:not(:disabled) { background: #3a2a1a; }
+  /* ---------- 小地图 ---------- */
+  #minimapBox { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none;
+    background: rgba(5,4,2,.92); border: 2px solid #6e5a3a; border-radius: 6px; padding: 10px; z-index: 30; }
+  #minimapBox .mapHint { color: #8d8170; font-size: 11px; text-align: center; margin-top: 6px; }
+  #minimapCanvas { width: 384px; height: 384px; image-rendering: pixelated; }
+  /* ---------- 通用 ---------- */
   #titleBox { position: fixed; left: 12px; top: 10px; color: #b8a888; z-index: 10; }
-  #titleBox h1 { margin: 0; font-size: 18px; letter-spacing: 4px; color: #d8c9a3;
+  #titleBox h1 { margin: 0; font-size: 16px; letter-spacing: 4px; color: #d8c9a3;
     text-shadow: 0 0 12px rgba(200,150,60,.45); }
-  #help { font-size: 11px; color: #7a7060; margin-top: 4px; line-height: 1.7; }
-  #hitFlash { position: fixed; inset: 0; background: radial-gradient(transparent 40%, rgba(160,10,15,.55));
-    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; }
-  .dmgText { position: fixed; font-weight: bold; pointer-events: none; z-index: 15;
-    text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,.8); transform: translate(-50%, -50%); white-space: nowrap; }
-  #deathOverlay { position: fixed; inset: 0; background: rgba(5,2,2,.85); display: none;
-    z-index: 30; text-align: center; color: #cfc4b0; }
-  #deathOverlay h2 { margin-top: 18vh; font-size: 64px; color: #8d1118; letter-spacing: 16px;
-    text-shadow: 0 0 30px rgba(160,20,25,.6); }
-  #deathOverlay p { font-size: 16px; line-height: 2; }
-  #restartBtn { margin-top: 24px; padding: 12px 46px; font-size: 18px; background: #2a1d12;
-    color: #e8c96a; border: 1px solid #6e5a3a; border-radius: 4px; cursor: pointer; letter-spacing: 6px; }
-  #restartBtn:hover { background: #3a2a1a; }
-  #noWebGL { position: fixed; inset: 0; display: none; color: #cfc4b0; text-align: center; padding-top: 30vh; }
+  #titleBox small { font-size: 10px; color: #7a7060; }
   #dayClock { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10;
     display: flex; align-items: center; gap: 8px; background: rgba(8,6,4,.6); border: 1px solid #3a2f25;
     border-radius: 20px; padding: 4px 14px 4px 6px; color: #cfc4b0; font-size: 13px; pointer-events: none; }
   #dayRing { width: 22px; height: 22px; border-radius: 50%; position: relative;
     background: conic-gradient(#c9a227 0deg, #2a2f3a 0deg); }
   #dayRing::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #100d09; }
+  #toast { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); color: #e8c96a;
+    font-size: 13px; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .4s; z-index: 20; pointer-events: none; }
   #audioCtl { position: fixed; top: 48px; right: 12px; z-index: 11; background: rgba(8,6,4,.7);
     border: 1px solid #3a2f25; border-radius: 4px; padding: 6px 10px; color: #cfc4b0; font-size: 12px; }
   #audioCtl .volRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   #audioCtl input[type=range] { width: 80px; height: 10px; accent-color: #c9a227; }
   #muteBtn { background: none; border: 1px solid #3a2f25; border-radius: 3px; color: #cfc4b0;
     cursor: pointer; font-size: 14px; padding: 1px 8px; }
-  #muteBtn:hover { background: #2a2018; }
+  #hitFlash { position: fixed; inset: 0; background: radial-gradient(transparent 40%, rgba(160,10,15,.55));
+    opacity: 0; pointer-events: none; z-index: 20; }
+  .dmgText { position: fixed; font-weight: bold; pointer-events: none; z-index: 15;
+    text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,.8); transform: translate(-50%, -50%); white-space: nowrap; }
+  #deathOverlay { position: fixed; inset: 0; background: rgba(5,2,2,.7); display: none;
+    z-index: 30; text-align: center; color: #cfc4b0; }
+  #deathOverlay h2 { margin-top: 26vh; font-size: 56px; color: #8d1118; letter-spacing: 16px;
+    text-shadow: 0 0 30px rgba(160,20,25,.6); }
+  #noWebGL { position: fixed; inset: 0; display: none; color: #cfc4b0; text-align: center; padding-top: 30vh; }
+  /* ---------- 开始界面 ---------- */
+  #startScreen { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 30%, #14110c, #050408 70%);
+    z-index: 50; text-align: center; color: #cfc4b0; overflow: auto; }
+  #startScreen h1 { margin-top: 9vh; font-size: 44px; letter-spacing: 14px; color: #d8c9a3;
+    text-shadow: 0 0 30px rgba(200,150,60,.5); }
+  #startScreen .sub { color: #8d8170; letter-spacing: 6px; margin-top: 6px; }
+  #menuBtns { margin-top: 48px; }
+  #startScreen button.big { background: #2a1d12; color: #e8c96a; border: 1px solid #6e5a3a; border-radius: 4px;
+    padding: 12px 42px; font-size: 17px; letter-spacing: 6px; cursor: pointer; margin: 0 12px; }
+  #startScreen button.big:hover:not(:disabled) { background: #3a2a1a; }
+  #startScreen button.big:disabled { opacity: .4; cursor: default; }
+  #newPanel { display: none; margin-top: 18px; }
+  #spawnMap { width: 360px; height: 360px; image-rendering: pixelated; border: 2px solid #6e5a3a;
+    border-radius: 4px; cursor: crosshair; }
+  #spawnInfo { color: #b8a888; font-size: 13px; margin: 10px 0; min-height: 18px; }
+  .kitRow { display: flex; justify-content: center; gap: 10px; margin: 6px 0 14px; }
+  .kitBtn { background: rgba(8,6,4,.8); border: 1px solid #3a2f25; color: #cfc4b0; border-radius: 4px;
+    padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .kitBtn.selected { border-color: #c9a227; color: #ffe27a; }
+  #startHelp { color: #6a6052; font-size: 11px; line-height: 1.9; margin-top: 18px; padding-bottom: 30px; }
 </style>
 </head>
 <body>
-<div id="titleBox">
-  <h1>暗黑方块世界</h1>
-  <div id="help">WASD 移动 · 鼠标指向瞄准<br>左键 近战挥砍 · 右键/空格 火球术（耗蓝）<br>Q 喝生命药水 · 走近掉落物自动拾取</div>
-</div>
-<div id="statPanel">击杀 <span id="killText">0</span></div>
-<div id="dayClock"><div id="dayRing"></div><span id="dayIcon">☀</span><span id="dayNum">第 1 天</span></div>
+<!-- 游戏内 UI -->
+<div id="titleBox" class="gameUI"><h1>暗黑方块世界</h1><small>中世纪生存 · M1</small></div>
+<div id="statPanel" class="gameUI">击杀 <span id="killText">0</span> · <span style="color:#ffd24a">⬤</span> <span id="moneyText">0</span></div>
+<div id="dayClock" class="gameUI"><div id="dayRing"></div><span id="dayIcon">☀</span><span id="dayNum">第 1 天</span></div>
+<div id="toast"></div>
 <div id="audioCtl">
   <button id="muteBtn" title="静音开关">🔊</button>
   <div class="volRow"><span title="音乐">♪</span><input type="range" id="volMusic" min="0" max="1" step="0.05"></div>
   <div class="volRow"><span title="音效">🗡</span><input type="range" id="volSfx" min="0" max="1" step="0.05"></div>
 </div>
-<div id="hud">
+<div id="hud" class="gameUI">
+  <div id="hungerWrap" class="barWrap"><div id="hungerFill" class="fill"></div><div id="hungerLabel" class="barLabel"></div></div>
   <div id="hpWrap" class="barWrap"><div id="hpFill" class="fill"></div><div id="hpLabel" class="barLabel"></div></div>
   <div id="mpWrap" class="barWrap"><div id="mpFill" class="fill"></div><div id="mpLabel" class="barLabel"></div></div>
   <div id="xpWrap" class="barWrap"><div id="xpFill" class="fill"></div></div>
-  <div id="lvlBadge">1</div>
-  <div id="potBadge"><span id="potText">1</span><small>药水 [Q]</small></div>
-  <div id="equipPanel">
-    <div class="slot"><span class="slotName">武器：</span><span id="wepText" style="color:#888">赤手空拳</span></div>
-    <div class="slot"><span class="slotName">护甲：</span><span id="armText" style="color:#888">破布衣衫</span></div>
+</div>
+<div id="lvlBadge" class="gameUI">1</div>
+<div id="potBadge" class="gameUI"><span id="potText">1</span><small>药水 [Q]</small></div>
+<div id="equipPanel" class="gameUI">
+  <div class="slot"><span class="slotName">武器：</span><span id="wepText" style="color:#888">赤手空拳</span></div>
+  <div class="slot"><span class="slotName">护甲：</span><span id="armText" style="color:#888">破布衣衫</span></div>
+</div>
+<div id="resPanel" class="gameUI"><div id="resList"></div></div>
+<div id="buildBar" class="gameUI"></div>
+<div id="hintBar" class="gameUI"></div>
+<div id="tradePanel"><div id="tradeRows"></div></div>
+<div id="minimapBox"><canvas id="minimapCanvas" width="256" height="256"></canvas>
+  <div class="mapHint">白点=你 · 绿点=家 · 金块=贸易站 · 红点=丧尸 —— M 关闭</div></div>
+<div id="hitFlash"></div>
+<div id="deathOverlay"><h2>你死了</h2><p id="deathInfo"></p></div>
+<div id="noWebGL"><h2>加载失败</h2><p>本页面需要联网加载 Three.js 渲染库，请检查网络后刷新。</p></div>
+
+<!-- 开始界面 -->
+<div id="startScreen">
+  <h1>暗黑方块世界</h1>
+  <div class="sub">中 世 纪 生 存 · 第 一 章</div>
+  <div id="menuBtns">
+    <button class="big" id="btnContinue" style="display:none">继 续</button>
+    <button class="big" id="btnNew">新 世 界</button>
+  </div>
+  <div id="newPanel">
+    <canvas id="spawnMap" width="256" height="256"></canvas>
+    <div id="spawnInfo">生成世界中…</div>
+    <div class="kitRow">
+      <button class="kitBtn" data-kit="farm">🌾 农夫<br><small>农活快·带4种子</small></button>
+      <button class="kitBtn" data-kit="axe">🪓 樵夫<br><small>伐木快</small></button>
+      <button class="kitBtn" data-kit="pick">⛏ 矿工<br><small>采石挖矿快</small></button>
+      <button class="kitBtn" data-kit="bow">🏹 猎人<br><small>猎物伤害高·肉多</small></button>
+    </div>
+    <button class="big" id="btnReroll">换一个世界</button>
+    <button class="big" id="btnStart" disabled>进 入 世 界</button>
+    <div id="startHelp">
+      白天采集资源、建造家园，夜晚丧尸来袭——先在天黑前盖好房子。<br>
+      WASD 移动 · 鼠标瞄准 · 左键 攻击/采集/施工 · 右键 火球术（3级觉醒）<br>
+      B 建造 · X 拆除 · E 开关城门 · F 进食 · Q 喝药水 · M 地图 · 农田需建在河流灌溉范围内
+    </div>
   </div>
 </div>
-<div id="hitFlash"></div>
-<div id="deathOverlay">
-  <h2>你死了</h2>
-  <p>存活时间：<span id="dTime"></span><br>击杀怪物：<span id="dKills"></span><br>最终等级：<span id="dLevel"></span></p>
-  <button id="restartBtn" onclick="location.reload()">重新开始</button>
-</div>
-<div id="noWebGL"><h2>渲染库加载失败</h2><p>本页面需要联网加载 Three.js 渲染库，请检查网络后刷新。</p></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-(function(){
-'use strict';
-if (typeof THREE === 'undefined') { document.getElementById('noWebGL').style.display = 'block'; return; }
-
-// ---------- 基础常量 ----------
-const SIZE = 128;            // 世界边长（格）
-const PLAYER_SPEED = 6.2;
-const MELEE_RANGE = 2.7, MELEE_CD = 0.45;
-const FIRE_COST = 12, FIRE_CD = 0.55, FIRE_SPEED = 15, FIRE_RADIUS = 2.8;
-const PICKUP_RANGE = 1.5, DROP_TTL = 30;
-
-const RARITIES = [
-  { name: '普通', color: '#c8c8c8', hex: 0xc8c8c8, mult: 1.0,  w: 60 },
-  { name: '魔法', color: '#5b8cff', hex: 0x5b8cff, mult: 1.35, w: 25 },
-  { name: '稀有', color: '#ffd24a', hex: 0xffd24a, mult: 1.8,  w: 11 },
-  { name: '传奇', color: '#ff8c2e', hex: 0xff8c2e, mult: 2.5,  w: 4  },
-];
-const WEP_NAMES = ['断剑', '骨斧', '钉锤', '弯刀', '巨剑'];
-const ARM_NAMES = ['皮甲', '锁甲', '鳞甲', '板甲', '符文甲'];
-
-// ---------- 音频核心：三总线（总/音效/音乐）+ 音量设置持久化 ----------
-const AudioCore = (function () {
-  let ctx = null, master = null, sfxBus = null, musicBus = null;
-  const settings = {
-    mute: localStorage.getItem('dc_mute') === '1',
-    sfx: isNaN(parseFloat(localStorage.getItem('dc_vol_sfx'))) ? 0.8 : parseFloat(localStorage.getItem('dc_vol_sfx')),
-    music: isNaN(parseFloat(localStorage.getItem('dc_vol_music'))) ? 0.7 : parseFloat(localStorage.getItem('dc_vol_music')),
-  };
-  function apply() {
-    if (!ctx) return;
-    master.gain.value = settings.mute ? 0 : 0.6;
-    sfxBus.gain.value = settings.sfx;
-    musicBus.gain.value = settings.music;
-  }
-  function ensure() {
-    if (!ctx) {
-      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-      catch (e) { return null; }
-      master = ctx.createGain(); master.connect(ctx.destination);
-      sfxBus = ctx.createGain(); sfxBus.connect(master);
-      musicBus = ctx.createGain(); musicBus.connect(master);
-      apply();
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-  addEventListener('keydown', ensure); addEventListener('mousedown', ensure);
-  return {
-    ensure, settings,
-    get ctx() { return ctx; },
-    get sfx() { return sfxBus; },
-    get music() { return musicBus; },
-    set(key, val) {
-      settings[key] = val;
-      localStorage.setItem('dc_mute', settings.mute ? '1' : '0');
-      localStorage.setItem('dc_vol_sfx', String(settings.sfx));
-      localStorage.setItem('dc_vol_music', String(settings.music));
-      apply();
-    },
-  };
-})();
-
-// ---------- 合成原语（即时音效 / 定时音符 / 定时噪声） ----------
-function tone(freq, endFreq, dur, type, vol, delay) {
-  const c = AudioCore.ensure(); if (!c) return;
-  const t0 = c.currentTime + (delay || 0);
-  const o = c.createOscillator(), g = c.createGain();
-  o.type = type || 'square';
-  o.frequency.setValueAtTime(freq, t0);
-  o.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq || freq), t0 + dur);
-  g.gain.setValueAtTime(vol || 0.15, t0);
-  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  o.connect(g); g.connect(AudioCore.sfx);
-  o.start(t0); o.stop(t0 + dur + 0.02);
-}
-function snoise(when, dur, vol, fStart, fEnd, dest) {
-  const c = AudioCore.ensure(); if (!c) return;
-  const len = Math.max(1, Math.floor(c.sampleRate * dur));
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-  const src = c.createBufferSource(); src.buffer = buf;
-  const f = c.createBiquadFilter(); f.type = 'lowpass';
-  f.frequency.setValueAtTime(fStart || 1000, when);
-  f.frequency.exponentialRampToValueAtTime(Math.max(40, fEnd || fStart || 1000), when + dur);
-  const g = c.createGain();
-  g.gain.setValueAtTime(vol || 0.2, when);
-  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
-  src.connect(f); f.connect(g); g.connect(dest || AudioCore.sfx);
-  src.start(when);
-}
-function noise(dur, vol, fStart, fEnd) {
-  const c = AudioCore.ensure(); if (!c) return;
-  snoise(c.currentTime, dur, vol, fStart, fEnd, AudioCore.sfx);
-}
-function mnote(freq, dur, type, vol, when, dest) {
-  const c = AudioCore.ctx; if (!c) return;
-  const o = c.createOscillator(), g = c.createGain();
-  o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(0.0001, when);
-  g.gain.linearRampToValueAtTime(vol, when + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
-  o.connect(g); g.connect(dest);
-  o.start(when); o.stop(when + dur + 0.05);
-}
-function mkick(when, vol, dest, f0, f1) {
-  const c = AudioCore.ctx; if (!c) return;
-  const o = c.createOscillator(), g = c.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(f0 || 130, when);
-  o.frequency.exponentialRampToValueAtTime(f1 || 40, when + 0.12);
-  g.gain.setValueAtTime(vol, when);
-  g.gain.exponentialRampToValueAtTime(0.001, when + 0.16);
-  o.connect(g); g.connect(dest);
-  o.start(when); o.stop(when + 0.2);
-}
-
-// ---------- 战斗与交互音效（API 与触发点不变） ----------
-const AudioFX = (function () {
-  return {
-    melee()     { noise(0.12, 0.18, 2400, 300); },
-    fireCast()  { tone(220, 880, 0.18, 'sawtooth', 0.10); noise(0.15, 0.06, 1800, 600); },
-    fireBoom()  { noise(0.45, 0.30, 700, 60); tone(120, 35, 0.4, 'triangle', 0.22); },
-    monHit()    { tone(140 + Math.random() * 50, 70, 0.09, 'square', 0.14); },
-    monDie()    { tone(300, 45, 0.35, 'sawtooth', 0.13); },
-    playerHit() { tone(95, 45, 0.22, 'square', 0.22); noise(0.12, 0.10, 500, 120); },
-    pickup(tier) {
-      const base = 520 + tier * 130;
-      tone(base, base, 0.09, 'sine', 0.12);
-      tone(base * 1.5, base * 1.5, 0.12, 'sine', 0.10, 0.07);
-      if (tier >= 2) tone(base * 2, base * 2, 0.16, 'sine', 0.09, 0.14);
-      if (tier >= 3) tone(base * 2.67, base * 2.67, 0.20, 'sine', 0.08, 0.21);
-    },
-    potion()    { tone(300, 170, 0.09, 'sine', 0.13); tone(240, 150, 0.09, 'sine', 0.13, 0.10); tone(280, 160, 0.10, 'sine', 0.12, 0.20); },
-    levelUp()   { [392, 523, 659, 784].forEach((f, i) => tone(f, f, 0.16, 'triangle', 0.13, i * 0.09)); },
-  };
-})();
-
-// ---------- 环境音：风声底噪常驻，昼鸟鸣，夜蟋蟀/猫头鹰/蝙蝠/狼嚎 ----------
-const Ambient = (function () {
-  let windOn = false;
-  const timers = { bird: 3, cricket: 1, owl: 9, bat: 7, wolf: 20 };
-  function startWind(c) {
-    const len = c.sampleRate * 2;
-    const buf = c.createBuffer(1, len, c.sampleRate);
-    const d0 = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d0[i] = Math.random() * 2 - 1;
-    const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
-    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 320;
-    const g = c.createGain(); g.gain.value = 0.05;
-    const lfo = c.createOscillator(); lfo.frequency.value = 0.13;
-    const lfoG = c.createGain(); lfoG.gain.value = 0.02;
-    lfo.connect(lfoG); lfoG.connect(g.gain);
-    src.connect(f); f.connect(g); g.connect(AudioCore.sfx);
-    src.start(); lfo.start();
-  }
-  function chirp() {
-    const base = 1900 + Math.random() * 700, n = 2 + Math.floor(Math.random() * 3);
-    for (let k = 0; k < n; k++) tone(base + Math.random() * 200, base + 700, 0.07, 'sine', 0.05, k * 0.1);
-  }
-  function cricket() {
-    for (let k = 0; k < 3; k++) tone(4200 + Math.random() * 150, 4200, 0.035, 'sine', 0.022, k * 0.07);
-  }
-  function owl() {
-    tone(420, 330, 0.28, 'sine', 0.06);
-    tone(390, 300, 0.42, 'sine', 0.055, 0.5);
-  }
-  function bat() {
-    const c = AudioCore.ctx; if (!c) return;
-    const t0 = c.currentTime;
-    for (let k = 0; k < 9; k++) snoise(t0 + k * 0.03, 0.02, 0.03, 3200, 1600);
-  }
-  function wolf() {
-    tone(330, 540, 0.9, 'sine', 0.038);
-    tone(540, 370, 1.1, 'sine', 0.03, 0.9);
-  }
-  function update(dt, darkness) {
-    const c = AudioCore.ctx; if (!c) return;
-    if (!windOn) { startWind(c); windOn = true; }
-    const isNight = darkness > 0.6, isDay = darkness < 0.4;
-    timers.bird -= dt;
-    if (isDay && timers.bird <= 0) { chirp(); timers.bird = 4 + Math.random() * 6; }
-    timers.cricket -= dt;
-    if (isNight && timers.cricket <= 0) { cricket(); timers.cricket = 0.5 + Math.random() * 0.5; }
-    timers.owl -= dt;
-    if (isNight && timers.owl <= 0) { owl(); timers.owl = 12 + Math.random() * 14; }
-    timers.bat -= dt;
-    if (isNight && timers.bat <= 0) { bat(); timers.bat = 9 + Math.random() * 10; }
-    timers.wolf -= dt;
-    if (isNight && timers.wolf <= 0) { wolf(); timers.wolf = 28 + Math.random() * 28; }
-  }
-  return { update };
-})();
-
-// ---------- 背景音乐：昼 78BPM 暗色循环 / 夜 96BPM 紧张变奏，晨昏交叉渐变 ----------
-const Music = (function () {
-  let inited = false, dayBus = null, nightBus = null;
-  const day = { next: 0, step: 0 }, night = { next: 0, step: 0 };
-  const DAY_8TH = 60 / 78 / 2, NIGHT_8TH = 60 / 96 / 2;
-  const N = { A1: 55, E2: 82.41, F2: 87.31, Eb2: 77.78, A3: 220, B3: 246.94, C4: 261.63,
-    D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, Bb5: 932.33 };
-  const dayBass = [N.A1, N.E2, N.F2, N.E2];
-  const nightBass = [N.A1, N.A1, N.Eb2, N.E2];
-  const dayArp = [N.A3, N.C4, N.E4, N.A4, N.E4, N.C4, N.B3, N.C4,
-    N.A3, N.C4, N.E4, N.G4, N.E4, N.D4, N.C4, N.B3];
-  const nightArp = [N.A3, N.C4, N.E4, N.F4, N.E4, N.C4, N.B3, N.C4,
-    N.A3, N.B3, N.C4, N.F4, N.E4, N.D4, N.C4, N.B3];
-  function initBuses(c) {
-    dayBus = c.createGain(); dayBus.gain.value = 0; dayBus.connect(AudioCore.music);
-    nightBus = c.createGain(); nightBus.gain.value = 0; nightBus.connect(AudioCore.music);
-  }
-  function schedDay(t, i) {
-    const bar = Math.floor(i / 8) % 4, beat = i % 8;
-    if (beat === 0) mnote(dayBass[bar], DAY_8TH * 7.5, 'sawtooth', 0.085, t, dayBus);
-    if (beat === 0) mkick(t, 0.10, dayBus);
-    if (beat === 4) { mkick(t, 0.07, dayBus); snoise(t, 0.06, 0.035, 1200, 500, dayBus); }
-    if ((i * 7 + bar * 3) % 11 >= 3) mnote(dayArp[i % 16], DAY_8TH * 0.95, 'triangle', 0.045, t, dayBus);
-  }
-  function schedNight(t, i) {
-    const bar = Math.floor(i / 8) % 4, beat = i % 8;
-    if (beat === 0) mnote(nightBass[bar], NIGHT_8TH * 7.5, 'sawtooth', 0.095, t, nightBus);
-    if (beat === 0 || beat === 3 || beat === 4) mkick(t, beat === 0 ? 0.12 : 0.08, nightBus);
-    if (beat === 2 || beat === 6) snoise(t, 0.05, 0.04, 1500, 600, nightBus);
-    if (beat === 7 && bar % 2 === 1) mkick(t, 0.09, nightBus, 95, 50);
-    if ((i * 5 + bar) % 13 >= 2) mnote(nightArp[i % 16], NIGHT_8TH * 0.9, 'triangle', 0.05, t, nightBus);
-    if (beat === 0 && bar === 2 && Math.floor(i / 32) % 2 === 0) mnote(N.Bb5, 1.4, 'sine', 0.02, t, nightBus);
-  }
-  function runScheduler(s, weight, spb, sched, c) {
-    if (weight < 0.02) { s.next = 0; return; }
-    if (s.next < c.currentTime) s.next = c.currentTime + 0.05;
-    const horizon = c.currentTime + 1.2;
-    while (s.next < horizon) { sched(s.next, s.step++); s.next += spb; }
-  }
-  function update(darkness) {
-    const c = AudioCore.ctx; if (!c) return;
-    if (!inited) { initBuses(c); inited = true; }
-    dayBus.gain.value = 1 - darkness;
-    nightBus.gain.value = darkness;
-    runScheduler(day, 1 - darkness, DAY_8TH, schedDay, c);
-    runScheduler(night, darkness, NIGHT_8TH, schedNight, c);
-  }
-  return { update };
-})();
-
-// ---------- 音频控件绑定 ----------
-(function () {
-  const muteBtn = document.getElementById('muteBtn');
-  const volM = document.getElementById('volMusic'), volS = document.getElementById('volSfx');
-  function paint() { muteBtn.textContent = AudioCore.settings.mute ? '🔇' : '🔊'; }
-  volM.value = AudioCore.settings.music; volS.value = AudioCore.settings.sfx; paint();
-  muteBtn.addEventListener('click', () => { AudioCore.set('mute', !AudioCore.settings.mute); paint(); });
-  volM.addEventListener('input', () => AudioCore.set('music', parseFloat(volM.value)));
-  volS.addEventListener('input', () => AudioCore.set('sfx', parseFloat(volS.value)));
-})();
-
-// ---------- 噪声（带种子的程序化地形） ----------
-const SEED = 1337;
-function hash2(x, z) {
-  let n = (x * 374761393 + z * 668265263 + SEED * 144665) | 0;
-  n = ((n ^ (n >>> 13)) * 1274126177) | 0;
-  return (((n ^ (n >>> 16)) >>> 0) / 4294967295);
-}
-function smoothNoise(x, z) {
-  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
-  const a = hash2(xi, zi), b = hash2(xi + 1, zi), c = hash2(xi, zi + 1), d = hash2(xi + 1, zi + 1);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
-function fbm(x, z) {
-  return smoothNoise(x, z) * 0.55 + smoothNoise(x * 2.1, z * 2.1) * 0.3 + smoothNoise(x * 4.3, z * 4.3) * 0.15;
-}
-
-// ---------- 场景 ----------
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x07080d);
-scene.fog = new THREE.FogExp2(0x07080d, 0.026);
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
-const CAM_OFF = new THREE.Vector3(11, 15.5, 11);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-document.body.appendChild(renderer.domElement);
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-// 灯光：昼夜双调色板 + 玩家火把
-const hemi = new THREE.HemisphereLight(0x26304a, 0x0a0810, 0.55);
-scene.add(hemi);
-const moon = new THREE.DirectionalLight(0x55668a, 0.28);
-moon.position.set(-30, 50, -20); scene.add(moon);
-const torch = new THREE.PointLight(0xff9944, 1.35, 22, 2);
-scene.add(torch);
-
-// ---------- 昼夜时钟（8 分钟一日：白天 300s + 黑夜 180s，含晨昏过渡） ----------
-const DAY_LEN = 480, DAY_PART = 300;
-let worldTime = 30; // 从清晨开始
-function darknessAt(t) {
-  if (t < 280) return 0;            // 白天
-  if (t < 300) return (t - 280) / 20;   // 黄昏渐暗
-  if (t < 460) return 1;            // 黑夜
-  return 1 - (t - 460) / 20;        // 黎明渐亮
-}
-const PAL = {
-  day:   { bg: new THREE.Color(0x252b34), fogD: 0.017, sky: new THREE.Color(0x95a0b5),
-           gnd: new THREE.Color(0x2e2b26), hemiInt: 0.85, dir: new THREE.Color(0xaab3c5), dirInt: 0.5 },
-  night: { bg: new THREE.Color(0x07080d), fogD: 0.026, sky: new THREE.Color(0x26304a),
-           gnd: new THREE.Color(0x0a0810), hemiInt: 0.55, dir: new THREE.Color(0x55668a), dirInt: 0.28 },
-};
-function applyLighting(d) {
-  scene.background.lerpColors(PAL.day.bg, PAL.night.bg, d);
-  scene.fog.color.copy(scene.background);
-  scene.fog.density = PAL.day.fogD + (PAL.night.fogD - PAL.day.fogD) * d;
-  hemi.color.lerpColors(PAL.day.sky, PAL.night.sky, d);
-  hemi.groundColor.lerpColors(PAL.day.gnd, PAL.night.gnd, d);
-  hemi.intensity = PAL.day.hemiInt + (PAL.night.hemiInt - PAL.day.hemiInt) * d;
-  moon.color.lerpColors(PAL.day.dir, PAL.night.dir, d);
-  moon.intensity = PAL.day.dirInt + (PAL.night.dirInt - PAL.day.dirInt) * d;
-}
-
-// ---------- 地形 ----------
-const heights = new Int8Array(SIZE * SIZE);
-const corrupt = new Uint8Array(SIZE * SIZE);
-for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) {
-  let h = Math.floor(fbm(x * 0.045, z * 0.045) * 9) - 1;
-  if (h < 0) h = 0; if (h > 7) h = 7;
-  heights[z * SIZE + x] = h;
-  corrupt[z * SIZE + x] = smoothNoise(x * 0.09 + 99, z * 0.09 + 99) > 0.68 ? 1 : 0;
-}
-function groundH(fx, fz) {
-  const x = Math.max(0, Math.min(SIZE - 1, Math.round(fx)));
-  const z = Math.max(0, Math.min(SIZE - 1, Math.round(fz)));
-  return heights[z * SIZE + x] + 0.5; // 方块顶面
-}
-(function buildTerrain() {
-  let count = 0;
-  for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) count += heights[z * SIZE + x] + 2;
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const mat = new THREE.MeshLambertMaterial();
-  const mesh = new THREE.InstancedMesh(geo, mat, count);
-  const m = new THREE.Matrix4(); const col = new THREE.Color();
-  let i = 0;
-  for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) {
-    const h = heights[z * SIZE + x], isC = corrupt[z * SIZE + x];
-    for (let y = -1; y <= h; y++) {
-      m.makeTranslation(x, y, z); mesh.setMatrixAt(i, m);
-      const shade = 0.82 + hash2(x * 3 + y, z * 3 - y) * 0.36;
-      if (y < h) col.setRGB(0.13 * shade, 0.11 * shade, 0.10 * shade);          // 泥土岩层
-      else if (isC) col.setRGB(0.20 * shade, 0.08 * shade, 0.26 * shade);        // 腐化紫地表
-      else if (h >= 5) col.setRGB(0.22 * shade, 0.22 * shade, 0.25 * shade);     // 高地岩石
-      else col.setRGB(0.07 * shade, 0.16 * shade, 0.09 * shade);                 // 暗夜草地
-      mesh.setColorAt(i, col); i++;
-    }
-  }
-  mesh.count = i;
-  scene.add(mesh);
-})();
-
-// 枯树与遗迹（氛围结构）
-(function buildProps() {
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const wood = new THREE.MeshLambertMaterial({ color: 0x2a1d12 });
-  const stone = new THREE.MeshLambertMaterial({ color: 0x3a3a42 });
-  const boxes = [];
-  function put(mat, x, y, z, sx, sy, sz) {
-    const mm = new THREE.Mesh(geo, mat);
-    mm.position.set(x, y, z); mm.scale.set(sx || 1, sy || 1, sz || 1);
-    scene.add(mm); boxes.push(mm);
-  }
-  for (let n = 0; n < 42; n++) {
-    const x = 6 + Math.floor(hash2(n, 7) * (SIZE - 12)), z = 6 + Math.floor(hash2(n, 31) * (SIZE - 12));
-    const base = groundH(x, z), th = 3 + Math.floor(hash2(n, 13) * 3);
-    put(wood, x, base + th / 2, z, 0.5, th, 0.5);
-    put(wood, x + 0.7, base + th - 0.6, z, 1.2, 0.3, 0.3);
-    put(wood, x - 0.3, base + th - 1.3, z - 0.6, 0.3, 0.3, 1.1);
-  }
-  for (let n = 0; n < 7; n++) {
-    const cx = 14 + Math.floor(hash2(n + 80, 5) * (SIZE - 28)), cz = 14 + Math.floor(hash2(n + 80, 55) * (SIZE - 28));
-    for (let k = 0; k < 5; k++) {
-      const a = k / 5 * Math.PI * 2, px = cx + Math.cos(a) * 3.2, pz = cz + Math.sin(a) * 3.2;
-      const ph = 1.5 + hash2(n * 9 + k, 3) * 2.5, base = groundH(px, pz);
-      put(stone, px, base + ph / 2, pz, 0.8, ph, 0.8);
-    }
-    if (n < 4) { // 少量遗迹火盆光源
-      const l = new THREE.PointLight(0x7a4aff, 0.8, 12, 2);
-      l.position.set(cx, groundH(cx, cz) + 2.2, cz); scene.add(l);
-    }
-  }
-})();
-
-// ---------- 体素小人构建 ----------
-function buildHumanoid(skin, cloth, scale) {
-  const g = new THREE.Group();
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  function part(color, x, y, z, sx, sy, sz) {
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: color }));
-    mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz); g.add(mesh); return mesh;
-  }
-  const legL = part(cloth, -0.16, 0.35, 0, 0.26, 0.7, 0.26);
-  const legR = part(cloth, 0.16, 0.35, 0, 0.26, 0.7, 0.26);
-  const body = part(cloth, 0, 1.05, 0, 0.62, 0.72, 0.36);
-  const head = part(skin, 0, 1.75, 0, 0.5, 0.5, 0.5);
-  const armL = part(skin, -0.44, 1.18, 0, 0.2, 0.62, 0.2);
-  const armR = part(skin, 0.44, 1.18, 0, 0.2, 0.62, 0.2);
-  armL.geometry = armR.geometry = legL.geometry = geo;
-  g.scale.setScalar(scale || 1);
-  return { group: g, legL, legR, armL, armR, body, head };
-}
-
-// ---------- 玩家 ----------
-const player = {
-  pos: new THREE.Vector3(SIZE / 2, 0, SIZE / 2),
-  facing: 0, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
-  level: 1, xp: 0, xpNeed: 60, baseAtk: 10,
-  weapon: null, armor: null, potions: 1, kills: 0,
-  meleeT: 0, fireT: 0, attackAnim: 0, dead: false,
-};
-const pModel = buildHumanoid(0xd8b890, 0x1c2030, 1);
-pModel.head.material.color.setHex(0xc9a87a);
-// 红披风 + 手中武器
-const cape = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.85, 0.08), new THREE.MeshLambertMaterial({ color: 0x551015 }));
-cape.position.set(0, 1.05, 0.25); pModel.group.add(cape);
-const wepMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), new THREE.MeshLambertMaterial({ color: 0x999999, emissive: 0x222222 }));
-wepMesh.position.set(0, -0.5, -0.3); wepMesh.rotation.x = Math.PI / 2.4;
-pModel.armR.add(wepMesh);
-scene.add(pModel.group);
-player.pos.y = groundH(player.pos.x, player.pos.z);
-
-// ---------- 输入 ----------
-const keys = {};
-const mouseNDC = new THREE.Vector2();
-let aimPoint = new THREE.Vector3(SIZE / 2, 0, SIZE / 2 - 5);
-addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('mousemove', e => {
-  mouseNDC.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-});
-let wantMelee = false, wantFire = false;
-addEventListener('mousedown', e => {
-  if (e.target.closest && e.target.closest('#audioCtl, #deathOverlay')) return; // 点击 UI 不触发攻击
-  if (e.button === 0) wantMelee = true;
-  if (e.button === 2) wantFire = true;
-});
-addEventListener('contextmenu', e => e.preventDefault());
-
-const raycaster = new THREE.Raycaster();
-const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-function updateAim() {
-  aimPlane.constant = -(player.pos.y + 0.5);
-  raycaster.setFromCamera(mouseNDC, camera);
-  const p = new THREE.Vector3();
-  if (raycaster.ray.intersectPlane(aimPlane, p)) aimPoint.copy(p);
-}
-
-// ---------- 怪物 ----------
-const monsters = [];
-const MTYPES = {
-  zombie:   { skin: 0x3f6b35, cloth: 0x23301f, hp: 32, dmg: 8, speed: 2.3, xp: 14, scale: 1.0 },
-  skeleton: { skin: 0xb8b4a4, cloth: 0x55524a, hp: 20, dmg: 6, speed: 3.4, xp: 11, scale: 0.92 },
-};
-function spawnMonster() {
-  const typeKey = Math.random() < 0.55 ? 'zombie' : 'skeleton';
-  const t = MTYPES[typeKey];
-  let x, z, tries = 0;
-  do {
-    const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 16;
-    x = player.pos.x + Math.cos(a) * d; z = player.pos.z + Math.sin(a) * d; tries++;
-  } while ((x < 3 || x > SIZE - 3 || z < 3 || z > SIZE - 3) && tries < 12);
-  x = Math.max(3, Math.min(SIZE - 3, x)); z = Math.max(3, Math.min(SIZE - 3, z));
-  const lv = player.level;
-  const hpMax = Math.round(t.hp * (1 + 0.32 * (lv - 1)));
-  const model = buildHumanoid(t.skin, t.cloth, t.scale);
-  model.group.position.set(x, groundH(x, z), z);
-  scene.add(model.group);
-  // 头顶血条（广告牌式双面片）
-  const barG = new THREE.Group();
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0x220a0a, side: THREE.DoubleSide, depthTest: false, transparent: true }));
-  const fg = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0xb82a2a, side: THREE.DoubleSide, depthTest: false, transparent: true }));
-  fg.position.z = 0.01; barG.add(bg); barG.add(fg);
-  barG.position.y = 2.35 * t.scale; model.group.add(barG);
-  monsters.push({
-    type: typeKey, model, barG, fg,
-    hp: hpMax, hpMax, dmg: Math.round(t.dmg * (1 + 0.22 * (lv - 1))),
-    speed: t.speed * (0.9 + Math.random() * 0.25), xp: Math.round(t.xp * (1 + 0.25 * (lv - 1))),
-    atkT: 0, flashT: 0, animT: Math.random() * 10,
-  });
-}
-function hurtMonster(mon, dmg, fromFire) {
-  mon.hp -= dmg; mon.flashT = 0.12;
-  mon.model.body.material.emissive.setHex(0x661111);
-  mon.model.head.material.emissive.setHex(0x661111);
-  showDmg(mon.model.group.position.clone().add(new THREE.Vector3(0, 2.1, 0)),
-    Math.round(dmg), fromFire ? '#ff9a3e' : '#ffd9b0', fromFire ? 18 : 15);
-  if (mon.hp <= 0) killMonster(mon); else AudioFX.monHit();
-}
-function killMonster(mon) {
-  AudioFX.monDie();
-  scene.remove(mon.model.group);
-  monsters.splice(monsters.indexOf(mon), 1);
-  player.kills++;
-  gainXp(mon.xp);
-  rollDrops(mon.model.group.position);
-}
-
-// ---------- 经验与升级 ----------
-function gainXp(n) {
-  player.xp += n;
-  while (player.xp >= player.xpNeed) {
-    player.xp -= player.xpNeed;
-    player.level++;
-    player.xpNeed = Math.round(player.xpNeed * 1.45);
-    player.maxHp += 18; player.baseAtk += 3;
-    player.hp = player.maxHp; player.mp = player.maxMp;
-    AudioFX.levelUp();
-    showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.6, 0)), '等级提升！LV ' + player.level, '#ffe27a', 22);
-  }
-}
-
-// ---------- 掉落物 ----------
-const drops = [];
-const dropGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
-const potGeo = new THREE.BoxGeometry(0.3, 0.42, 0.3);
-function rollRarity() {
-  let r = Math.random() * 100;
-  for (const ra of RARITIES) { if (r < ra.w) return ra; r -= ra.w; }
-  return RARITIES[0];
-}
-function rollDrops(pos) {
-  if (Math.random() < 0.22) makeDrop(pos, { kind: 'potion' });
-  if (Math.random() < 0.30) {
-    const rarity = rollRarity();
-    const isWep = Math.random() < 0.5;
-    const base = isWep ? 4 + player.level * 2.2 : 3 + player.level * 1.8;
-    const power = Math.max(1, Math.round(base * rarity.mult * (0.85 + Math.random() * 0.3)));
-    const names = isWep ? WEP_NAMES : ARM_NAMES;
-    makeDrop(pos, {
-      kind: isWep ? 'weapon' : 'armor', rarity,
-      power, name: rarity.name + '·' + names[Math.floor(Math.random() * names.length)],
-    });
-  }
-}
-function makeDrop(pos, item) {
-  let mesh;
-  if (item.kind === 'potion') {
-    mesh = new THREE.Mesh(potGeo, new THREE.MeshLambertMaterial({ color: 0xc01525, emissive: 0x550a10 }));
-  } else {
-    mesh = new THREE.Mesh(dropGeo, new THREE.MeshLambertMaterial({ color: item.rarity.hex, emissive: item.rarity.hex, emissiveIntensity: 0.35 }));
-  }
-  const x = pos.x + (Math.random() - 0.5), z = pos.z + (Math.random() - 0.5);
-  mesh.position.set(x, groundH(x, z) + 0.5, z);
-  scene.add(mesh);
-  drops.push({ mesh, item, ttl: DROP_TTL, baseY: mesh.position.y });
-}
-function tryPickup(d) {
-  const it = d.item;
-  if (it.kind === 'potion') {
-    player.potions++;
-    AudioFX.pickup(0);
-    showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.2, 0)), '+1 生命药水', '#ff7a8a', 14);
-  } else {
-    const slot = it.kind === 'weapon' ? 'weapon' : 'armor';
-    const cur = player[slot];
-    if (!cur || it.power > cur.power) {
-      player[slot] = it;
-      AudioFX.pickup(RARITIES.indexOf(it.rarity));
-      showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.2, 0)),
-        '拾取 ' + it.name + '（' + (slot === 'weapon' ? '攻击+' : '防御+') + it.power + '）', it.rarity.color, 16);
-      if (slot === 'weapon') wepMesh.material.color.setHex(it.rarity.hex);
-    } else {
-      showDmg(d.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), '较弱 · 已丢弃', '#777777', 12);
-    }
-  }
-  scene.remove(d.mesh);
-  drops.splice(drops.indexOf(d), 1);
-}
-
-// ---------- 火球 ----------
-const fireballs = [];
-const fireGeo = new THREE.SphereGeometry(0.28, 10, 10);
-function castFireball() {
-  if (player.mp < FIRE_COST || player.fireT > 0) return;
-  player.mp -= FIRE_COST; player.fireT = FIRE_CD; player.attackAnim = 0.3;
-  const dir = new THREE.Vector3(Math.sin(player.facing), 0, Math.cos(player.facing));
-  const mesh = new THREE.Mesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xff7722 }));
-  mesh.position.copy(player.pos).add(new THREE.Vector3(dir.x * 0.9, 1.2, dir.z * 0.9));
-  const light = fireballs.length < 4 ? new THREE.PointLight(0xff6622, 1.1, 7, 2) : null;
-  if (light) mesh.add(light);
-  scene.add(mesh);
-  fireballs.push({ mesh, dir, life: 1.4 });
-  AudioFX.fireCast();
-}
-function explodeFireball(fb) {
-  AudioFX.fireBoom();
-  const p = fb.mesh.position;
-  const dmgBase = (player.baseAtk + (player.weapon ? player.weapon.power : 0)) * 1.6;
-  for (let i = monsters.length - 1; i >= 0; i--) {
-    const mon = monsters[i];
-    if (mon.model.group.position.distanceTo(p) < FIRE_RADIUS)
-      hurtMonster(mon, dmgBase * (0.9 + Math.random() * 0.2), true);
-  }
-  const boom = new THREE.Mesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.85 }));
-  boom.position.copy(p); scene.add(boom);
-  explosions.push({ mesh: boom, t: 0 });
-  scene.remove(fb.mesh);
-  fireballs.splice(fireballs.indexOf(fb), 1);
-}
-const explosions = [];
-
-// ---------- 近战 ----------
-function doMelee() {
-  if (player.meleeT > 0) return;
-  player.meleeT = MELEE_CD; player.attackAnim = 0.32;
-  AudioFX.melee();
-  const dmgBase = player.baseAtk + (player.weapon ? player.weapon.power : 0);
-  const fwd = new THREE.Vector2(Math.sin(player.facing), Math.cos(player.facing));
-  for (let i = monsters.length - 1; i >= 0; i--) {
-    const mon = monsters[i];
-    const dp = new THREE.Vector2(mon.model.group.position.x - player.pos.x, mon.model.group.position.z - player.pos.z);
-    const dist = dp.length();
-    if (dist < MELEE_RANGE && dp.normalize().dot(fwd) > 0.34)
-      hurtMonster(mon, dmgBase * (0.85 + Math.random() * 0.3), false);
-  }
-}
-
-// ---------- 伤害飘字 ----------
-const dmgTexts = [];
-function showDmg(worldPos, text, color, size) {
-  if (dmgTexts.length > 40) { const old = dmgTexts.shift(); old.el.remove(); }
-  const el = document.createElement('div');
-  el.className = 'dmgText'; el.textContent = text;
-  el.style.color = color; el.style.fontSize = (size || 14) + 'px';
-  document.body.appendChild(el);
-  dmgTexts.push({ el, pos: worldPos.clone(), life: 0.9 });
-}
-function updateDmgTexts(dt) {
-  for (let i = dmgTexts.length - 1; i >= 0; i--) {
-    const d = dmgTexts[i];
-    d.life -= dt; d.pos.y += dt * 1.6;
-    if (d.life <= 0) { d.el.remove(); dmgTexts.splice(i, 1); continue; }
-    const v = d.pos.clone().project(camera);
-    d.el.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px';
-    d.el.style.top = ((-v.y * 0.5 + 0.5) * innerHeight) + 'px';
-    d.el.style.opacity = Math.min(1, d.life * 2);
-  }
-}
-
-// ---------- 玩家受击 / 药水 / 死亡 ----------
-const hitFlash = document.getElementById('hitFlash');
-let flashT = 0;
-function hurtPlayer(dmg) {
-  const armorP = player.armor ? player.armor.power : 0;
-  const real = Math.max(1, Math.round(dmg * 50 / (50 + armorP)));
-  player.hp -= real; flashT = 0.3;
-  AudioFX.playerHit();
-  showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.3, 0)), '-' + real, '#ff4444', 16);
-  if (player.hp <= 0 && !player.dead) die();
-}
-function usePotion() {
-  if (player.potions <= 0 || player.hp >= player.maxHp || player.dead) return;
-  player.potions--;
-  AudioFX.potion();
-  const heal = Math.round(player.maxHp * 0.4);
-  player.hp = Math.min(player.maxHp, player.hp + heal);
-  showDmg(player.pos.clone().add(new THREE.Vector3(0, 2.3, 0)), '+' + heal, '#4aff7a', 18);
-}
-addEventListener('keydown', e => { if (e.code === 'KeyQ') usePotion(); });
-let startTime = performance.now();
-function die() {
-  player.dead = true; player.hp = 0;
-  const secs = Math.round((performance.now() - startTime) / 1000);
-  document.getElementById('dTime').textContent = Math.floor(secs / 60) + ' 分 ' + (secs % 60) + ' 秒';
-  document.getElementById('dKills').textContent = player.kills + ' 只';
-  document.getElementById('dLevel').textContent = 'LV ' + player.level;
-  document.getElementById('deathOverlay').style.display = 'block';
-}
-
-// ---------- HUD ----------
-const ui = {
-  hpFill: document.getElementById('hpFill'), mpFill: document.getElementById('mpFill'),
-  xpFill: document.getElementById('xpFill'), hpLabel: document.getElementById('hpLabel'),
-  mpLabel: document.getElementById('mpLabel'), lvl: document.getElementById('lvlBadge'),
-  pot: document.getElementById('potText'), kill: document.getElementById('killText'),
-  wep: document.getElementById('wepText'), arm: document.getElementById('armText'),
-  dayNum: document.getElementById('dayNum'), dayIcon: document.getElementById('dayIcon'),
-  dayRing: document.getElementById('dayRing'),
-};
-function updateHUD() {
-  ui.hpFill.style.width = (player.hp / player.maxHp * 100) + '%';
-  ui.mpFill.style.width = (player.mp / player.maxMp * 100) + '%';
-  ui.xpFill.style.width = (player.xp / player.xpNeed * 100) + '%';
-  ui.hpLabel.textContent = Math.ceil(player.hp) + ' / ' + player.maxHp;
-  ui.mpLabel.textContent = Math.floor(player.mp) + ' / ' + player.maxMp;
-  ui.lvl.textContent = player.level;
-  ui.pot.textContent = player.potions;
-  ui.kill.textContent = player.kills;
-  if (player.weapon) { ui.wep.textContent = player.weapon.name + ' 攻击+' + player.weapon.power; ui.wep.style.color = player.weapon.rarity.color; }
-  if (player.armor) { ui.arm.textContent = player.armor.name + ' 防御+' + player.armor.power; ui.arm.style.color = player.armor.rarity.color; }
-}
-
-// ---------- 主循环 ----------
-let spawnTimer = 0;
-for (let i = 0; i < 8; i++) spawnMonster();
-const clock = new THREE.Clock();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  const t = clock.elapsedTime;
-
-  // 昼夜推进与光照
-  worldTime += dt;
-  const tDay = worldTime % DAY_LEN;
-  const darkness = darknessAt(tDay);
-  applyLighting(darkness);
-  ui.dayNum.textContent = '第 ' + (Math.floor(worldTime / DAY_LEN) + 1) + ' 天';
-  ui.dayIcon.textContent = tDay < DAY_PART ? '☀' : '🌙';
-  ui.dayRing.style.background = 'conic-gradient(#c9a227 ' + (tDay / DAY_LEN * 360).toFixed(1) + 'deg, #2a2f3a 0deg)';
-  Ambient.update(dt, darkness);
-  Music.update(darkness);
-
-  if (!player.dead) {
-    // 移动
-    let mx = 0, mz = 0;
-    if (keys['KeyW']) { mx -= 1; mz -= 1; }
-    if (keys['KeyS']) { mx += 1; mz += 1; }
-    if (keys['KeyA']) { mx -= 1; mz += 1; }
-    if (keys['KeyD']) { mx += 1; mz -= 1; }
-    const moving = mx !== 0 || mz !== 0;
-    if (moving) {
-      const len = Math.hypot(mx, mz);
-      player.pos.x += mx / len * PLAYER_SPEED * dt;
-      player.pos.z += mz / len * PLAYER_SPEED * dt;
-      player.pos.x = Math.max(2, Math.min(SIZE - 2, player.pos.x));
-      player.pos.z = Math.max(2, Math.min(SIZE - 2, player.pos.z));
-    }
-    player.pos.y += (groundH(player.pos.x, player.pos.z) - player.pos.y) * Math.min(1, dt * 10);
-
-    // 瞄准
-    updateAim();
-    player.facing = Math.atan2(aimPoint.x - player.pos.x, aimPoint.z - player.pos.z);
-
-    // 攻击
-    player.meleeT = Math.max(0, player.meleeT - dt);
-    player.fireT = Math.max(0, player.fireT - dt);
-    if (wantMelee) { doMelee(); wantMelee = false; }
-    if (wantFire || keys['Space']) { castFireball(); wantFire = false; }
-
-    // 回复
-    player.mp = Math.min(player.maxMp, player.mp + 6 * dt);
-    player.hp = Math.min(player.maxHp, player.hp + 0.8 * dt);
-
-    // 玩家模型
-    pModel.group.position.copy(player.pos);
-    pModel.group.rotation.y = player.facing;
-    const wob = moving ? Math.sin(t * 11) * 0.55 : 0;
-    pModel.legL.rotation.x = wob; pModel.legR.rotation.x = -wob;
-    pModel.armL.rotation.x = -wob * 0.7;
-    player.attackAnim = Math.max(0, player.attackAnim - dt);
-    pModel.armR.rotation.x = player.attackAnim > 0 ? -2.0 * Math.sin(player.attackAnim / 0.32 * Math.PI) : wob * 0.7;
-
-    // 怪物刷新
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnTimer = 1.2;
-      const target = Math.min(7 + player.level, 22);
-      if (monsters.length < target) { spawnMonster(); if (monsters.length < target - 3) spawnMonster(); }
-    }
-  }
-
-  // 怪物 AI
-  for (const mon of monsters) {
-    const mp = mon.model.group.position;
-    const dx = player.pos.x - mp.x, dz = player.pos.z - mp.z;
-    const dist = Math.hypot(dx, dz);
-    mon.atkT = Math.max(0, mon.atkT - dt);
-    if (!player.dead) {
-      if (dist > 1.6) {
-        mp.x += dx / dist * mon.speed * dt;
-        mp.z += dz / dist * mon.speed * dt;
-      } else if (mon.atkT <= 0) {
-        mon.atkT = 1.0;
-        hurtPlayer(mon.dmg * (0.9 + Math.random() * 0.2));
-      }
-    }
-    // 怪物间简单分离
-    for (const other of monsters) {
-      if (other === mon) continue;
-      const ox = mp.x - other.model.group.position.x, oz = mp.z - other.model.group.position.z;
-      const od = Math.hypot(ox, oz);
-      if (od > 0.01 && od < 0.9) { mp.x += ox / od * dt * 1.5; mp.z += oz / od * dt * 1.5; }
-    }
-    mp.y += (groundH(mp.x, mp.z) - mp.y) * Math.min(1, dt * 10);
-    mon.model.group.rotation.y = Math.atan2(dx, dz);
-    mon.animT += dt;
-    const mwob = Math.sin(mon.animT * 8) * 0.5;
-    mon.model.legL.rotation.x = mwob; mon.model.legR.rotation.x = -mwob;
-    mon.model.armL.rotation.x = -0.9 + mwob * 0.3; mon.model.armR.rotation.x = -0.9 - mwob * 0.3;
-    // 血条
-    const ratio = Math.max(0, mon.hp / mon.hpMax);
-    mon.fg.scale.x = ratio; mon.fg.position.x = -(1 - ratio) * 0.55;
-    mon.barG.quaternion.copy(camera.quaternion);
-    // 受击红闪恢复
-    if (mon.flashT > 0) {
-      mon.flashT -= dt;
-      if (mon.flashT <= 0) { mon.model.body.material.emissive.setHex(0); mon.model.head.material.emissive.setHex(0); }
-    }
-  }
-
-  // 火球
-  for (let i = fireballs.length - 1; i >= 0; i--) {
-    const fb = fireballs[i];
-    fb.life -= dt;
-    fb.mesh.position.x += fb.dir.x * FIRE_SPEED * dt;
-    fb.mesh.position.z += fb.dir.z * FIRE_SPEED * dt;
-    let hit = fb.life <= 0 || fb.mesh.position.y < groundH(fb.mesh.position.x, fb.mesh.position.z) - 0.2;
-    if (!hit) for (const mon of monsters) {
-      if (mon.model.group.position.distanceTo(fb.mesh.position) < 1.25) { hit = true; break; }
-    }
-    if (hit) explodeFireball(fb);
-  }
-  for (let i = explosions.length - 1; i >= 0; i--) {
-    const ex = explosions[i];
-    ex.t += dt;
-    ex.mesh.scale.setScalar(1 + ex.t * 28);
-    ex.mesh.material.opacity = Math.max(0, 0.85 - ex.t * 3.4);
-    if (ex.t > 0.25) { scene.remove(ex.mesh); explosions.splice(i, 1); }
-  }
-
-  // 掉落物
-  for (let i = drops.length - 1; i >= 0; i--) {
-    const d = drops[i];
-    d.ttl -= dt;
-    if (d.ttl <= 0) { scene.remove(d.mesh); drops.splice(i, 1); continue; }
-    d.mesh.rotation.y += dt * 2.5;
-    d.mesh.position.y = d.baseY + Math.sin(t * 3 + i) * 0.12;
-    if (!player.dead && d.mesh.position.distanceTo(player.pos) < PICKUP_RANGE) tryPickup(d);
-  }
-
-  // 火把光与受击红屏（白天火光弱化）
-  torch.position.set(player.pos.x, player.pos.y + 2.4, player.pos.z);
-  torch.intensity = (1.3 + Math.sin(t * 9) * 0.09 + Math.random() * 0.07) * (0.45 + 0.55 * darkness);
-  if (flashT > 0) { flashT -= dt; hitFlash.style.opacity = Math.min(1, flashT * 3); }
-
-  // 相机跟随
-  camera.position.lerp(player.pos.clone().add(CAM_OFF), Math.min(1, dt * 6));
-  camera.lookAt(player.pos.x, player.pos.y + 1, player.pos.z);
-
-  updateDmgTexts(dt);
-  updateHUD();
-  renderer.render(scene, camera);
-}
-animate();
-})();
+  if (typeof THREE === 'undefined') document.getElementById('noWebGL').style.display = 'block';
+  // 进入开始界面前隐藏游戏内 UI
+  document.querySelectorAll('.gameUI').forEach(el => el.style.display = 'none');
 </script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
