@@ -19,6 +19,8 @@
   #xpWrap { bottom: 24px; height: 7px; }
   .fill { height: 100%; width: 100%; transition: width .12s linear; }
   #hungerFill { background: linear-gradient(#b07a28, #7a5210); }
+  .starving { animation: starvePulse 1s infinite; }
+  @keyframes starvePulse { 50% { border-color: #c0652a; box-shadow: 0 0 10px rgba(220,110,30,.55); } }
   #hpFill { background: linear-gradient(#a3232a, #6e1016); }
   #mpFill { background: linear-gradient(#2a4fa3, #16306e); }
   #xpFill { background: linear-gradient(#c9a227, #8a6d12); }

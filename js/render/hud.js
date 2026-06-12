@@ -142,6 +142,7 @@ export function createHud(sim, sceneApi, handlers) {
     ui.hpLabel.textContent = Math.ceil(p.hp) + ' / ' + p.maxHp;
     ui.mpLabel.textContent = Math.floor(p.mp) + ' / ' + p.maxMp;
     ui.hungerLabel.textContent = '饱食 ' + Math.ceil(p.hunger);
+    ui.hungerFill.parentElement.classList.toggle('starving', p.hunger < 50);
     ui.lvl.textContent = p.level;
     ui.pot.textContent = p.potions;
     ui.kill.textContent = p.kills;

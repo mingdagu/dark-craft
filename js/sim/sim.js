@@ -34,7 +34,7 @@ const START_MONEY = 50;
 const FARM_GROW_SEC = DAY_LEN * 2;
 const MELEE_RANGE = 2.7, MELEE_CD = 0.45, WORK_RANGE = 2.4;
 const FIRE_COST = 12, FIRE_CD = 0.55, FIRE_SPEED = 15, FIRE_RADIUS = 2.8, FIRE_UNLOCK_LEVEL = 3;
-const ZOMBIE_BUILDING_DPS = 0.8;
+const ZOMBIE_BUILDING_DPS = 0.6;
 const TRADE_SAFE_R = 9;
 
 const RARITIES = [
@@ -64,7 +64,7 @@ export function createSim(seed, kitKey, spawn, savedState) {
       version: SAVE_VERSION, seed, tick: 0, day: 1,
       player: {
         x: spawn.x, z: spawn.z, facing: 0, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
-        hunger: 100, level: 1, xp: 0, xpNeed: 60, baseAtk: 10,
+        hunger: 70, level: 1, xp: 0, xpNeed: 60, baseAtk: 10,
         weapon: null, armor: null, potions: 1, money: START_MONEY, kit: kitKey,
         inv: { wood: 0, stone: 0, iron: 0, copper: 0, fruit: 2, wheat: 0, meat: 0, seed: kitKey === 'farm' ? 4 : 0 },
         kills: 0, dead: false, respawnT: 0, meleeT: 0, fireT: 0, workNode: 0, gatherAcc: 0, home: null,
@@ -163,7 +163,10 @@ export function createSim(seed, kitKey, spawn, savedState) {
       if (p.level === FIRE_UNLOCK_LEVEL) emit({ t: 'text', x: p.x, z: p.z, text: '火球术已觉醒（右键）', color: '#ff8c2e', size: 18 });
     }
   }
-  function atk() { return s.player.baseAtk + (s.player.weapon ? s.player.weapon.power : 0); }
+  function atk() {
+    const base = s.player.baseAtk + (s.player.weapon ? s.player.weapon.power : 0);
+    return s.player.hunger < 25 ? base * 0.8 : base; // 饿得发慌时攻击无力
+  }
   function hurtZombie(zb, dmg, fromFire) {
     zb.hp -= dmg;
     emit({ t: 'text', x: zb.x, z: zb.z, text: Math.round(dmg), color: fromFire ? '#ff9a3e' : '#ffd9b0', size: fromFire ? 18 : 15 });
@@ -277,14 +280,22 @@ export function createSim(seed, kitKey, spawn, savedState) {
       p.facing = input.facing ?? p.facing;
       if (input.move && (input.move.x || input.move.z)) {
         const len = Math.hypot(input.move.x, input.move.z) || 1;
-        tryMove(p, p.x + input.move.x / len * 6.2 * TICK_DT, p.z + input.move.z / len * 6.2 * TICK_DT, 'player');
+        const spd = p.hunger < 25 ? 5.6 : 6.2; // 饥饿减速
+        tryMove(p, p.x + input.move.x / len * spd * TICK_DT, p.z + input.move.z / len * spd * TICK_DT, 'player');
       }
       p.meleeT = Math.max(0, p.meleeT - TICK_DT);
       p.fireT = Math.max(0, p.fireT - TICK_DT);
       p.mp = Math.min(p.maxMp, p.mp + 6 * TICK_DT);
+      const hungerBefore = p.hunger;
       p.hunger = Math.max(0, p.hunger - HUNGER_PER_SEC * TICK_DT);
-      if (p.hunger <= 0) { p.hp -= 2 * TICK_DT; if (p.hp <= 0) hurtPlayer(1); }
-      else if (p.hunger > 30) p.hp = Math.min(p.maxHp, p.hp + 0.8 * TICK_DT);
+      if (hungerBefore > 50 && p.hunger <= 50)
+        emit({ t: 'text', x: p.x, z: p.z, text: '肚子咕咕叫了（停止回血，按 F 进食）', color: '#e8a84a', size: 15 });
+      if (hungerBefore > 25 && p.hunger <= 25)
+        emit({ t: 'text', x: p.x, z: p.z, text: '你饿得发慌（移动减速、攻击无力）', color: '#ff8844', size: 16 });
+      if (hungerBefore > 0 && p.hunger <= 0)
+        emit({ t: 'text', x: p.x, z: p.z, text: '你在挨饿！生命正在流失', color: '#ff5544', size: 17 });
+      if (p.hunger <= 0) { p.hp -= 3 * TICK_DT; if (p.hp <= 0 && !p.dead) hurtPlayer(1); }
+      else if (p.hunger >= 50) p.hp = Math.min(p.maxHp, p.hp + 0.8 * TICK_DT);
 
       for (const act of input.actions || []) doAction(act);
       if (input.work) doWork(input.aim);
@@ -323,17 +334,22 @@ export function createSim(seed, kitKey, spawn, savedState) {
       }
     }
 
-    // 丧尸：夜间分批刷新
+    // 丧尸：整夜持续围困——维持同屏围困数，被杀的隔一阵从黑暗中补员，永远打不完
     if (isNight) {
-      const target = Math.min(4 + (s.day - 1), 40);
-      if (s.nightSpawned < target && s.tick % 40 === 0) spawnZombie();
+      const concurrent = Math.min(4 + s.day, 14); // 夜1=5只
+      if (s.zombies.length < concurrent) {
+        s.zSpawnT = (s.zSpawnT || 0) - TICK_DT;
+        if (s.zSpawnT <= 0) {
+          spawnZombie();
+          s.zSpawnT = (tDay - DAY_PART < 25) ? 1.5 : 13 + rng() * 9; // 夜初快速围拢，此后按节奏补员
+        }
+      }
     } else if (s.zombies.length && s.tick % 10 === 0) {
       // 黎明退散：逐只消失
       const zb = s.zombies[0];
       emit({ t: 'text', x: zb.x, z: zb.z, text: '化为尘土', color: '#888', size: 12 });
       s.zombies.shift();
-    }
-    if (!isNight) s.nightSpawned = 0;
+    } else if (!s.zombies.length) s.zSpawnT = 0;
 
     // 玩家是否在完好自宅的格子上（屋内庇护：丧尸攻击房屋而不是人）
     const shelterId = (() => {
@@ -343,16 +359,28 @@ export function createSim(seed, kitKey, spawn, savedState) {
       return b && (b.type === 'house' || b.type === 'tower') && b.stage === 'done' ? bid : 0;
     })();
 
-    // 丧尸 AI
+    // 丧尸 AI（破坏者径直拆建筑，普通个体追人）
     for (const zb of s.zombies) {
       zb.atkT = Math.max(0, zb.atkT - TICK_DT);
       const dp = Math.hypot(p.x - zb.x, p.z - zb.z);
-      let tx, tz;
-      if (!p.dead && dp < 18 && !inTradeSafe(p.x, p.z)) { tx = p.x; tz = p.z; }
+      let tx, tz, targetB = null;
+      if (zb.breaker) {
+        let bd = 1e9;
+        for (const b of s.buildings) {
+          if (b.stage !== 'done') continue;
+          const dd = (b.x - zb.x) ** 2 + (b.z - zb.z) ** 2;
+          if (dd < bd) { bd = dd; targetB = b; }
+        }
+      }
+      if (targetB) { tx = targetB.x; tz = targetB.z; }
+      else if (!p.dead && dp < 18 && !inTradeSafe(p.x, p.z)) { tx = p.x; tz = p.z; }
       else if (p.home) { tx = p.home.x; tz = p.home.z; }
       else { tx = zb.x + Math.cos(zb.id * 2.3) * 3; tz = zb.z + Math.sin(zb.id * 1.7) * 3; }
       const d = Math.hypot(tx - zb.x, tz - zb.z);
-      if (shelterId && dp < 2.2 && zb.atkT <= 0) {
+      if (targetB && d < 1.9) {
+        if (zb.atkT <= 0) { zb.atkT = 1; damageBuilding(targetB, ZOMBIE_BUILDING_DPS); emit({ t: 'sfx', n: 'monHit' }); }
+      }
+      else if (shelterId && dp < 2.2 && zb.atkT <= 0) {
         const hb = s.buildings.find(bb => bb.id === shelterId);
         if (hb) { zb.atkT = 1; damageBuilding(hb, ZOMBIE_BUILDING_DPS); emit({ t: 'sfx', n: 'monHit' }); }
       }
@@ -383,7 +411,7 @@ export function createSim(seed, kitKey, spawn, savedState) {
       if (an.type === 'wolf' && an.state === 'wander' && dp < def.aggro && !p.dead && !inTradeSafe(p.x, p.z)) an.state = 'attack';
       if (an.type === 'deer' && dp < def.flee) an.state = 'flee';
       if (an.state === 'attack' && !p.dead) {
-        if (dp < 1.5) { if (an.atkT <= 0) { an.atkT = 1.1; hurtPlayer(def.dmg); } }
+        if (dp < 1.5) { if (an.atkT <= 0 && !shelterId) { an.atkT = 1.1; hurtPlayer(def.dmg); } }
         else if (dp > 16) an.state = 'wander';
         else tryMove(an, an.x + (p.x - an.x) / dp * def.speed * TICK_DT, an.z + (p.z - an.z) / dp * def.speed * TICK_DT, 'animal');
       } else if (an.state === 'flee') {
@@ -470,19 +498,20 @@ export function createSim(seed, kitKey, spawn, savedState) {
 
   function spawnZombie() {
     const p = s.player;
+    const c = p.home || p; // 围困家园而非追着人刷
     let tries = 0;
     while (tries++ < 60) {
-      const a = rng() * Math.PI * 2, d = 26 + rng() * 18;
-      const x = Math.max(2, Math.min(SIZE - 2, p.x + Math.cos(a) * d));
-      const z = Math.max(2, Math.min(SIZE - 2, p.z + Math.sin(a) * d));
+      const a = rng() * Math.PI * 2, d = 24 + rng() * 16;
+      const x = Math.max(2, Math.min(SIZE - 2, c.x + Math.cos(a) * d));
+      const z = Math.max(2, Math.min(SIZE - 2, c.z + Math.sin(a) * d));
       if (isWater(x, z) || inTradeSafe(x, z)) continue;
       const skel = rng() < 0.4;
       const lv = s.day;
       s.zombies.push({
-        id: s.nextZid++, skel, x, z,
+        id: s.nextZid++, skel, x, z, breaker: rng() < 0.4,
         hp: Math.round((skel ? 20 : 32) * (1 + 0.18 * (lv - 1))),
         hpMax: Math.round((skel ? 20 : 32) * (1 + 0.18 * (lv - 1))),
-        dmg: Math.round((skel ? 6 : 8) * (1 + 0.12 * (lv - 1))),
+        dmg: Math.round((skel ? 5 : 6) * (1 + 0.12 * (lv - 1))),
         speed: (skel ? 3.4 : 2.3) * (0.9 + rng() * 0.25), atkT: 0,
       });
       s.nightSpawned++;

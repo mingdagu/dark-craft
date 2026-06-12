@@ -207,6 +207,8 @@ export function createScene(world, sim) {
 
   function makeZombieModel(zb) {
     const mdl = zb.skel ? buildHumanoid(0xb8b4a4, 0x55524a, 0.92) : buildHumanoid(0x3f6b35, 0x23301f, 1);
+    if (zb.breaker) mdl.head.material.emissive.setHex(0x771515); // 破坏者红眼
+
     const barG = new T.Group();
     const bg = new T.Mesh(new T.PlaneGeometry(1.1, 0.12), new T.MeshBasicMaterial({ color: 0x220a0a, side: T.DoubleSide, depthTest: false, transparent: true }));
     const fg = new T.Mesh(new T.PlaneGeometry(1.1, 0.12), new T.MeshBasicMaterial({ color: 0xb82a2a, side: T.DoubleSide, depthTest: false, transparent: true }));
